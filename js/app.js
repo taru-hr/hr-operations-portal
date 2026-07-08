@@ -7,6 +7,7 @@ const ROUTES = {
   employees: { label: "Employees",       sub: "Directory & profiles",            icon: "employees" },
   time:      { label: "Time Tracking",   sub: "Attendance & timesheets",         icon: "time" },
   leave:     { label: "Leave Management", sub: "Balances & requests",            icon: "leave", count: () => H.pendingLeaveCount() },
+  comp:      { label: "Compensation & Benefits", navLabel: "Compensation", sub: "Salary, benefits & pay history", icon: "wallet" },
   approvals: { label: "Approvals",       sub: "Pending your review",             icon: "approvals", count: () => DB.approvals.length },
   reports:   { label: "Reports",         sub: "People analytics",                icon: "reports" },
   assistant: { label: "AI Assistant",    sub: "Ask your HR data",                icon: "assistant" },
@@ -32,7 +33,7 @@ const App = {
       const r = ROUTES[key];
       if (!r) return;
       const c = r.count ? r.count() : 0;
-      a.innerHTML = `${icon(r.icon, 19)}<span>${r.label}</span>${c ? `<span class="nav-count">${c}</span>` : ""}`;
+      a.innerHTML = `${icon(r.icon, 19)}<span>${r.navLabel || r.label}</span>${c ? `<span class="nav-count">${c}</span>` : ""}`;
     });
   },
 
@@ -84,6 +85,12 @@ const App = {
       });
     }
     if (key === "assistant") this.wireChat();
+    if (key === "comp") {
+      const rs = document.getElementById("compRoleSelect");
+      if (rs) rs.addEventListener("change", (e) => { Pages.compRole = e.target.value; this.renderRoute("comp"); });
+      const es = document.getElementById("compEmpSelect");
+      if (es) es.addEventListener("change", (e) => { Pages.compEmpId = e.target.value; this.renderRoute("comp"); });
+    }
   },
 
   /* ---------- Global event delegation ---------- */
@@ -96,11 +103,23 @@ const App = {
 
     const gs = document.getElementById("globalSearch");
     gs.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && e.target.value.trim()) {
-        Pages.empFilter.q = e.target.value.trim();
-        Pages.empFilter.dept = "all";
-        location.hash = "#employees";
+      if (e.key !== "Enter") return;
+      const q = e.target.value.trim();
+      if (!q) return;
+      // Exact Employee ID (e.g. "EMP-001", "emp-001", "EMP-1") → jump straight to the profile
+      const emp = this.findEmpById(q);
+      if (emp) {
+        Pages.empFilter = { q: emp.id, dept: "all" };
+        e.target.value = "";
+        if (location.hash === "#employees") this.renderRoute("employees");
+        else location.hash = "#employees";
+        this.openProfile(emp.id);
+        return;
       }
+      // Otherwise: filter the directory
+      Pages.empFilter.q = q;
+      Pages.empFilter.dept = "all";
+      location.hash = "#employees";
     });
 
     document.addEventListener("click", (e) => {
@@ -112,9 +131,13 @@ const App = {
         "add-employee": () => this.openAddEmployee(),
         "request-leave": () => this.openRequestLeave(),
         "open-profile": () => this.openProfile(el.dataset.id),
+        "view-comp": () => this.openComp(el.dataset.id),
         approve: () => this.decide(el.dataset.id, "Approved"),
         reject: () => this.decide(el.dataset.id, "Rejected"),
-        "clock-toggle": () => this.toggleClock(el),
+        "clock-toggle": () => this.toggleClock(),
+        "set-mode": () => this.setMode(el.dataset.mode),
+        "toggle-benefit": () => this.toggleBenefit(el.dataset.id),
+        "edit-comp": () => this.openEditComp(),
         "report-tab": () => { Pages.reportTab = el.dataset.tab; this.swapTabs(el); document.getElementById("reportBody").innerHTML = Pages.reportBody(); },
         "settings-tab": () => { Pages.settingsTab = el.dataset.tab; this.swapTabs(el); document.getElementById("settingsBody").innerHTML = Pages.settingsBody(); },
         "leave-tab": () => { Pages.leaveTab = el.dataset.tab; this.swapTabs(el); document.getElementById("leaveBody").innerHTML = Pages.leaveRows(); },
@@ -151,26 +174,82 @@ const App = {
   },
 
   /* ---------- Time clock ---------- */
-  toggleClock(btn) {
-    const statusEl = document.getElementById("clockStatus");
-    const hintEl = document.getElementById("clockHint");
-    if (btn.dataset.state === "in") {
-      btn.dataset.state = "out";
-      btn.className = "btn btn--green";
-      btn.style.minWidth = "140px";
-      btn.innerHTML = `${icon("play", 17)} Clock In`;
-      statusEl.textContent = "Clocked out · 17:04";
-      hintEl.textContent = "You logged 7h 52m today. Have a good evening!";
-      this.toast("Clocked out", "Your hours for today have been recorded (demo).", "success");
-    } else {
-      btn.dataset.state = "in";
-      btn.className = "btn btn--red";
-      btn.style.minWidth = "140px";
-      btn.innerHTML = `${icon("stop", 17)} Clock Out`;
-      statusEl.textContent = "Clocked in · 08:42";
-      hintEl.textContent = "Working since 08:42 — timer running.";
-      this.toast("Clocked in", "Welcome back — your timer is running (demo).", "success");
+  // Push the current user's clock state into the shared attendance data, so the
+  // "Today's Attendance Log" and the KPIs/donut all reflect the chosen work mode.
+  applyMyAttendance() {
+    const a = DB.attendance.find((x) => x.empId === DB.currentUser.id);
+    if (!a) return;
+    const c = Pages.clock;
+    a.mode = c.mode;
+    a.in = c.inTime;
+    a.out = c.in ? "—" : c.outTime;
+    a.status = c.mode === "Remote" ? "Remote" : "Present";
+  },
+
+  toggleClock() {
+    const c = Pages.clock;
+    if (c.in) { c.in = false; c.outTime = "17:04"; } else { c.in = true; c.inTime = "08:42"; c.outTime = "—"; }
+    this.applyMyAttendance();
+    this.renderRoute("time");
+    this.toast(c.in ? "Clocked in" : "Clocked out",
+      c.in ? `Timer running — you're marked as ${c.mode === "Remote" ? "working remotely" : "in the office"} (demo).`
+           : "Your hours for today have been recorded (demo).", "success");
+  },
+
+  setMode(mode) {
+    Pages.clock.mode = mode;
+    this.applyMyAttendance();
+    this.renderRoute("time");
+    this.toast("Work mode updated", `You're now marked as ${mode === "Remote" ? "working remotely 🏠" : "working from the office 🏢"} (demo).`, "success");
+  },
+
+  /* ---------- Compensation & Benefits ---------- */
+  toggleBenefit(id) {
+    const acc = Pages.compAccessModel(Pages.compRole);
+    if (!acc.editBenefits) {
+      this.toast("No permission", `The ${Pages.compRole} role can't edit benefits — try the HR or Administrator role.`, "err");
+      return;
     }
+    const rec = H.compFor(Pages.compEmpId);
+    const b = rec.benefits.find((x) => x.id === id);
+    if (!b) return;
+    b.enabled = !b.enabled;
+    rec.benefitsHistory.unshift({ date: DB.today, benefit: b.name, action: b.enabled ? "added" : "removed", by: Pages.compRole });
+    this.renderRoute("comp");
+    const who = H.fullName(H.emp(Pages.compEmpId));
+    this.toast(b.enabled ? "Benefit added" : "Benefit removed", `${b.name} — ${b.enabled ? "enrolled" : "removed"} for ${who} (demo).`, b.enabled ? "success" : "info");
+  },
+
+  openEditComp() {
+    const acc = Pages.compAccessModel(Pages.compRole);
+    if (!acc.editSalary) { this.toast("No permission", `The ${Pages.compRole} role can't edit salary.`, "err"); return; }
+    const rec = H.compFor(Pages.compEmpId);
+    const c = rec.compensation;
+    const who = H.fullName(H.emp(Pages.compEmpId));
+    const body = `<form id="compForm">
+      <p class="text-2" style="font-size:12.5px;margin-bottom:14px">Editing salary for <strong>${who}</strong></p>
+      <div class="form-row">
+        <div class="field"><label>New monthly salary (€)</label><input class="input" type="number" name="salary" value="${c.salaryMonthly}" min="0" step="50" /></div>
+        <div class="field"><label>Effective date</label><input class="input" type="date" name="date" value="${DB.today}" /></div>
+      </div>
+      <div class="field"><label>Reason</label>
+        <select class="select" name="reason"><option>Annual increase</option><option>Promotion</option><option>Market adjustment</option><option>Correction</option></select></div>
+      <p class="text-3" style="font-size:12px">Salary band ${c.band.name}: €${c.band.min.toLocaleString("en-US")}–€${c.band.max.toLocaleString("en-US")}.</p>
+    </form>`;
+    const footer = `<button class="btn btn--ghost" data-action="close-modal">Cancel</button>
+      <button class="btn btn--primary" id="compSubmit">${icon("check", 16)} Save change</button>`;
+    this.openModal("Edit Salary", body, footer);
+    document.getElementById("compSubmit").addEventListener("click", () => {
+      const f = document.getElementById("compForm");
+      const salary = parseInt(f.salary.value, 10);
+      if (!salary || salary <= 0) { this.toast("Invalid amount", "Enter a valid salary.", "err"); return; }
+      c.salaryMonthly = salary;
+      c.effectiveDate = f.date.value || DB.today;
+      rec.history.unshift({ date: c.effectiveDate, salary, reason: f.reason.value, by: Pages.compRole });
+      this.closeModal();
+      this.renderRoute("comp");
+      this.toast("Salary updated", `${who} — new salary €${salary.toLocaleString("en-US")} recorded (demo).`, "success");
+    });
   },
 
   /* ---------- Modals ---------- */
@@ -191,10 +270,29 @@ const App = {
   },
   closeModal() { const m = document.getElementById("modalBackdrop"); if (m) m.remove(); },
 
+  // Resolve a search query to an employee only when it's an exact ID match
+  // (accepts "EMP-001", "emp-001", and loosely-typed "EMP-1"). Returns null otherwise.
+  findEmpById(q) {
+    const s = q.trim().toLowerCase();
+    let emp = DB.employees.find((x) => x.id.toLowerCase() === s);
+    if (emp) return emp;
+    const m = s.match(/^emp-?0*(\d{1,3})$/);
+    if (m) return DB.employees.find((x) => x.id === "EMP-" + m[1].padStart(3, "0")) || null;
+    return null;
+  },
+
   openProfile(id) {
     const e = H.emp(id);
     if (!e) return;
     this.openModal("Employee Profile", Pages.employeeProfile(e));
+  },
+
+  // Open the Compensation & Benefits page for a specific employee
+  openComp(id) {
+    if (id) Pages.compEmpId = id;
+    this.closeModal();
+    if (location.hash === "#comp") this.renderRoute("comp");
+    else location.hash = "#comp";
   },
 
   openAddEmployee() {

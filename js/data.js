@@ -11,7 +11,7 @@ const DB = {
 
   company: {
     name: "TaruHR",
-    legal: "TaruHR Technologies Inc.",
+    legal: "TaruHR",
     tagline: "HR Operations Portal",
     founded: 2019,
     location: "Helsinki, FI · Remote-first",
@@ -28,7 +28,7 @@ const DB = {
   /* ---- Departments (colour drives every chart) ---- */
   departments: [
     { id: "eng",  name: "Engineering",       head: "Sarah Chen",       color: "#4f46e5" },
-    { id: "prod", name: "Product",           head: "Fatima Al-Sayed",  color: "#ef4444" },
+    { id: "prod", name: "Production",         head: "Fatima Al-Sayed",  color: "#ef4444" },
     { id: "des",  name: "Design",            head: "Priya Patel",      color: "#8b5cf6" },
     { id: "sal",  name: "Sales",             head: "David Kim",        color: "#10b981" },
     { id: "mkt",  name: "Marketing",         head: "Emma Wilson",      color: "#ec4899" },
@@ -45,8 +45,8 @@ const DB = {
     { id: "EMP-004", first: "Liam",    last: "O'Brien",  dept: "eng",  title: "DevOps Engineer",         type: "Full-time", status: "Remote",   location: "Dublin, IE",    join: "2022-01-10", manager: "EMP-002", email: "liam.obrien@taruhr.com" },
     { id: "EMP-005", first: "Ethan",   last: "Müller",   dept: "eng",  title: "Backend Engineer",        type: "Full-time", status: "Active",   location: "Munich, DE",    join: "2023-09-04", manager: "EMP-002", email: "ethan.muller@taruhr.com" },
     { id: "EMP-006", first: "Ava",     last: "Nguyen",   dept: "eng",  title: "Frontend Engineer",       type: "Full-time", status: "On Leave", location: "Helsinki, FI",  join: "2022-11-21", manager: "EMP-002", email: "ava.nguyen@taruhr.com" },
-    { id: "EMP-007", first: "Fatima",  last: "Al-Sayed", dept: "prod", title: "Head of Product",         type: "Full-time", status: "Active",   location: "London, UK",    join: "2020-08-12", manager: null,      email: "fatima.alsayed@taruhr.com" },
-    { id: "EMP-008", first: "Noah",    last: "Williams", dept: "prod", title: "Product Manager",         type: "Full-time", status: "Active",   location: "Amsterdam, NL", join: "2023-02-27", manager: "EMP-007", email: "noah.williams@taruhr.com" },
+    { id: "EMP-007", first: "Fatima",  last: "Al-Sayed", dept: "prod", title: "Head of Production",      type: "Full-time", status: "Active",   location: "London, UK",    join: "2020-08-12", manager: null,      email: "fatima.alsayed@taruhr.com" },
+    { id: "EMP-008", first: "Noah",    last: "Williams", dept: "prod", title: "Production Manager",      type: "Full-time", status: "Active",   location: "Amsterdam, NL", join: "2023-02-27", manager: "EMP-007", email: "noah.williams@taruhr.com" },
     { id: "EMP-009", first: "Priya",   last: "Patel",    dept: "des",  title: "Design Lead",             type: "Full-time", status: "Active",   location: "Helsinki, FI",  join: "2021-05-19", manager: null,      email: "priya.patel@taruhr.com" },
     { id: "EMP-010", first: "Lucas",   last: "Silva",    dept: "des",  title: "Product Designer",        type: "Full-time", status: "Active",   location: "Lisbon, PT",    join: "2024-01-08", manager: "EMP-009", email: "lucas.silva@taruhr.com" },
     { id: "EMP-011", first: "David",   last: "Kim",      dept: "sal",  title: "Sales Director",          type: "Full-time", status: "Active",   location: "New York, US",  join: "2020-04-06", manager: null,      email: "david.kim@taruhr.com" },
@@ -182,6 +182,57 @@ const DB = {
     { label: "Career growth",       score: 71 },
     { label: "Recommend as employer", score: 88 },
   ],
+
+  /* ---- Compensation & Benefits (current user's record) ---- */
+  compensation: {
+    empId: "EMP-001",
+    currency: "€",
+    salaryMonthly: 3800,
+    grade: "P3",
+    band: { name: "P3 · Senior Professional", min: 3200, mid: 3800, max: 4400 },
+    effectiveDate: "2026-01-01",
+    fte: 100,               // employment percentage
+    bonusEligible: true,
+    bonusTarget: 10,        // % of annual salary
+    nextReview: "2026-12-01",
+    payFrequency: "Monthly",
+  },
+
+  compensationHistory: [
+    { date: "2026-01-01", salary: 3800, reason: "Annual increase",   by: "HR" },
+    { date: "2025-04-01", salary: 3650, reason: "Promotion to P3",   by: "HR" },
+    { date: "2024-01-01", salary: 3400, reason: "Annual increase",   by: "HR" },
+    { date: "2022-01-01", salary: 3150, reason: "Annual increase",   by: "HR" },
+    { date: "2020-02-17", salary: 2900, reason: "Starting salary",   by: "HR" },
+  ],
+
+  // Finnish-context benefits (TaruHR is Helsinki-based)
+  benefits: [
+    { id: "healthcare", name: "Occupational healthcare", desc: "Extended private health cover",  value: "Full cover",       taxable: false, enabled: true,  tint: "tint-red",    icon: "health" },
+    { id: "lunch",      name: "Lunch benefit",           desc: "Meal benefit (ePassi)",           value: "€8.60 / day",      taxable: true,  enabled: true,  tint: "tint-amber",  icon: "coffee" },
+    { id: "phone",      name: "Phone benefit",           desc: "Work mobile & plan",              value: "€20 / month",      taxable: true,  enabled: true,  tint: "tint-blue",   icon: "phone" },
+    { id: "wellness",   name: "Wellness benefit",        desc: "Sport & culture (ePassi)",        value: "€400 / year",      taxable: false, enabled: true,  tint: "tint-teal",   icon: "star" },
+    { id: "bicycle",    name: "Bicycle benefit",         desc: "Tax-free company bike",           value: "up to €1,200 / yr",taxable: false, enabled: true,  tint: "tint-green",  icon: "bike" },
+    { id: "housing",    name: "Housing benefit",         desc: "Employer-provided housing",       value: "Market value",     taxable: true,  enabled: false, tint: "tint-violet", icon: "home" },
+    { id: "car",        name: "Company car",             desc: "Benefit car",                     value: "Benefit value",    taxable: true,  enabled: false, tint: "tint-brand",  icon: "car" },
+  ],
+
+  benefitsHistory: [
+    { date: "2026-01-15", benefit: "Wellness benefit",        action: "added",   by: "HR" },
+    { date: "2025-04-01", benefit: "Phone benefit",           action: "added",   by: "HR" },
+    { date: "2024-05-01", benefit: "Bicycle benefit",         action: "added",   by: "HR" },
+    { date: "2020-02-17", benefit: "Occupational healthcare", action: "added",   by: "HR" },
+    { date: "2020-02-17", benefit: "Lunch benefit",           action: "added",   by: "HR" },
+  ],
+
+  // Role-based access to compensation data (drives the "Viewing as" switcher)
+  compAccess: [
+    { role: "Employee",      access: "View own salary and benefits" },
+    { role: "Manager",       access: "View team salary bands (if permitted)" },
+    { role: "HR",            access: "Edit salary and benefits" },
+    { role: "Payroll",       access: "Edit salary details" },
+    { role: "Administrator", access: "Full access" },
+  ],
 };
 
 /* ============================================================
@@ -267,4 +318,109 @@ const H = {
 
   pendingApprovals: () => DB.approvals,
   pendingLeaveCount: () => DB.leaveRequests.filter((l) => l.status === "Pending").length,
+
+  // Per-employee compensation record — generated lazily and cached so edits persist.
+  // EMP-001 (Taru) keeps the hand-authored seed; everyone else is generated.
+  compFor(empId) {
+    DB._comp = DB._comp || {};
+    if (!DB._comp[empId]) {
+      DB._comp[empId] = empId === "EMP-001"
+        ? { compensation: DB.compensation, history: DB.compensationHistory, benefits: DB.benefits, benefitsHistory: DB.benefitsHistory }
+        : buildComp(H.emp(empId));
+    }
+    return DB._comp[empId];
+  },
 };
+
+/* ============================================================
+   Compensation generator — deterministic, realistic records
+   derived from each employee's title, department and tenure.
+   ============================================================ */
+function compLevel(title) {
+  const t = title.toLowerCase();
+  if (/vp|head of|chief|director/.test(t)) return 5;
+  if (/lead|manager|principal/.test(t)) return 4;
+  if (/senior|sr\.?\b/.test(t)) return 3;
+  if (/coordinator|specialist|\brep\b|associate|assistant|support|intern/.test(t)) return 1;
+  return 2;
+}
+
+function benefitEnabledFor(emp, id, level) {
+  let h = 0; const s = emp.id + id;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  switch (id) {
+    case "healthcare": return true;
+    case "lunch":      return true;
+    case "phone":      return level >= 3 || emp.dept === "sal" || emp.dept === "cs";
+    case "wellness":   return h % 4 !== 0;             // ~75%
+    case "bicycle":    return h % 2 === 0;             // ~50%
+    case "housing":    return false;
+    case "car":        return (emp.dept === "sal" && level >= 4) || level >= 5;
+    default:           return false;
+  }
+}
+
+function buildComp(emp) {
+  const bands = {
+    1: { grade: "P1", tier: "Associate",           min: 2400, mid: 2850, max: 3300 },
+    2: { grade: "P2", tier: "Professional",        min: 3000, mid: 3500, max: 4000 },
+    3: { grade: "P3", tier: "Senior Professional", min: 3200, mid: 3800, max: 4400 },
+    4: { grade: "M3", tier: "Manager",             min: 4200, mid: 5000, max: 5800 },
+    5: { grade: "M4", tier: "Leadership",          min: 5600, mid: 6800, max: 8000 },
+  };
+  const level = compLevel(emp.title);
+  const band = bands[level];
+  const deptFactor = { eng: 1.06, prod: 1.04, sal: 1.02, fin: 1.0, des: 1.0, mkt: 0.98, cs: 0.96, ppl: 0.99 }[emp.dept] || 1;
+  const years = parseFloat(H.tenureYears(emp.join));
+  const round50 = (n) => Math.round(n / 50) * 50;
+
+  let h = 0;
+  for (let i = 0; i < emp.id.length; i++) h = (h * 31 + emp.id.charCodeAt(i)) >>> 0;
+  const jitter = (h % 7) * 50 - 150; // -150..+150
+
+  const fte = emp.type === "Part-time" ? 80 : 100;
+  // Salary is the full-time-equivalent band salary; the FTE % is shown separately.
+  let salary = round50(band.mid * deptFactor + years * 20 + jitter);
+  salary = Math.max(band.min, Math.min(band.max, salary));
+
+  const bonusEligible = level >= 3;
+  const bonusTarget = level >= 5 ? 15 : level >= 4 ? 12 : level >= 3 ? 10 : 0;
+  const effectiveDate = emp.join >= "2026-01-01" ? emp.join : "2026-01-01";
+  const joinYear = +emp.join.slice(0, 4);
+
+  // Compensation history — progression up to current salary
+  let history;
+  if (emp.join >= "2026-01-01") {
+    history = [{ date: emp.join, salary, reason: "Starting salary", by: "HR" }];
+  } else {
+    history = [{ date: effectiveDate, salary, reason: "Annual increase", by: "HR" }];
+    let sal = salary, y = 2026;
+    const raises = Math.max(1, Math.min(3, Math.floor(years)));
+    for (let i = 0; i < raises; i++) {
+      y--;
+      if (y <= joinYear) break;
+      sal = round50(sal - (110 + i * 40));
+      history.push({ date: `${y}-01-01`, salary: sal, reason: i === raises - 1 && years >= 2 ? "Promotion" : "Annual increase", by: "HR" });
+    }
+    history.push({ date: emp.join, salary: round50(Math.max(band.min - 200, sal - 150)), reason: "Starting salary", by: "HR" });
+  }
+
+  // Benefits (copied from the shared catalogue so edits stay per-employee)
+  const benefits = DB.benefits.map((b) => ({ ...b, enabled: benefitEnabledFor(emp, b.id, level) }));
+  const addDate = emp.join < "2025-01-01" ? "2025-06-01" : emp.join;
+  const benefitsHistory = [];
+  benefits.filter((b) => b.enabled && !["healthcare", "lunch"].includes(b.id)).forEach((b) => {
+    benefitsHistory.push({ date: addDate, benefit: b.name, action: "added", by: "HR" });
+  });
+  benefitsHistory.push({ date: emp.join, benefit: "Lunch benefit", action: "added", by: "HR" });
+  benefitsHistory.push({ date: emp.join, benefit: "Occupational healthcare", action: "added", by: "HR" });
+
+  return {
+    compensation: {
+      empId: emp.id, currency: "€", salaryMonthly: salary,
+      grade: band.grade, band: { name: `${band.grade} · ${band.tier}`, min: band.min, max: band.max, mid: band.mid },
+      effectiveDate, fte, bonusEligible, bonusTarget, nextReview: "2026-12-01", payFrequency: "Monthly",
+    },
+    history, benefits, benefitsHistory,
+  };
+}

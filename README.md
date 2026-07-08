@@ -14,10 +14,13 @@ analytics and an AI assistant.
 
 ## ✨ Highlights
 
-- **8 fully navigable sections** — Dashboard, Employees, Time Tracking, Leave
-  Management, Approvals, Reports, AI Assistant, Settings.
+- **9 fully navigable sections** — Dashboard, Employees, Time Tracking, Leave
+  Management, Compensation & Benefits, Approvals, Reports, AI Assistant, Settings.
 - **Internally consistent data** — every KPI, chart and table is computed live
   from a single mock dataset, so the app behaves like a real system.
+- **Role-based access control (RBAC) demo** — a "Viewing as" switcher on the
+  Compensation page changes what each role (Employee / Manager / HR / Payroll /
+  Administrator) can see and edit, live.
 - **Hand-built SVG charts** — donut, bar, grouped-bar and line/area charts with
   **no external libraries** (a nod to Power BI–style people analytics).
 - **Working interactions** — search & filter the directory, clock in/out,
@@ -34,6 +37,7 @@ analytics and an AI assistant.
 | 👥 **Employees** | Searchable/filterable directory with employee profiles & org details |
 | ⏰ **Time Tracking** | Clock in/out, weekly timesheet, live attendance log & trends |
 | 🌴 **Leave Management** | Leave balances, request workflow, team requests with status |
+| 💶 **Compensation & Benefits** | Per-employee salary, grade/band & compa-ratio, benefits enrolment, pay & benefits history — opened from any employee's profile — plus a live **role-based access (RBAC)** demo |
 | ✅ **Approvals** | Unified queue for leave, timesheets, expenses & equipment with approve/reject |
 | 📊 **Reports** | People analytics: headcount, attendance, leave, attrition & engagement |
 | 🤖 **AI Assistant** | Ask HR questions in plain language (rule-based over the demo data) |

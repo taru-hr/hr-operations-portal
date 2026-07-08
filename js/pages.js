@@ -25,6 +25,15 @@ const Icons = {
   calendar: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>`,
   briefcase: `<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 13h20"/>`,
   building: `<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M9 6h.01M13 6h.01M9 10h.01M13 10h.01M9 14h.01M13 14h.01"/>`,
+  home: `<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>`,
+  office: `<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M9 6h.01M13 6h.01M9 10h.01M13 10h.01M9 14h.01M13 14h.01"/>`,
+  wallet: `<path d="M3 7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2"/><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M16 13.5h5"/><circle cx="16.4" cy="13.5" r="1.3"/>`,
+  health: `<rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path d="M12 8.5v7M8.5 12h7"/>`,
+  bike: `<circle cx="5.5" cy="17.5" r="3"/><circle cx="18.5" cy="17.5" r="3"/><path d="M5.5 17.5 9 9h6l3.5 8.5"/><path d="M15 9l1.5-3h1.8"/>`,
+  car: `<path d="M5 13l1.6-4.3A2 2 0 0 1 8.5 7.4h7a2 2 0 0 1 1.9 1.3L19 13"/><path d="M4 13h16v4a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1v-.5H7.5v.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4Z"/>`,
+  gift: `<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13"/><path d="M12 8S10.8 4 8.8 4a2 2 0 0 0 0 4H12ZM12 8s1.2-4 3.2-4a2 2 0 0 1 0 4H12Z"/>`,
+  percent: `<path d="M19 5 5 19"/><circle cx="7.5" cy="7.5" r="2.2"/><circle cx="16.5" cy="16.5" r="2.2"/>`,
+  lock: `<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>`,
   dollar: `<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
   laptop: `<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/>`,
   doc: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>`,
@@ -79,6 +88,10 @@ function kindPill(k) {
   const map = { Leave: "teal", Timesheet: "blue", Expense: "amber", Equipment: "violet" };
   return pill(k, map[k] || "gray");
 }
+function roleBadge(role) {
+  const map = { Employee: "teal", Manager: "blue", HR: "violet", Payroll: "amber", Administrator: "red" };
+  return pill(role, map[role] || "gray");
+}
 function statCard({ icon: ic, tint, label, value, foot }) {
   return `<div class="stat">
     <div class="stat__top">
@@ -110,6 +123,9 @@ const Pages = {
   reportTab: "headcount",
   leaveTab: "all",
   approvalFilter: "all",
+  clock: { in: true, mode: "Office", inTime: "08:42", outTime: "—" },
+  compRole: "HR",
+  compEmpId: "EMP-001",
 
   /* ---------------- DASHBOARD ---------------- */
   dashboard() {
@@ -250,7 +266,7 @@ const Pages = {
         <div class="card__head" style="flex-wrap:wrap;gap:14px">
           <div class="search" style="width:280px">
             ${icon("filter", 16)}
-            <input type="text" id="empSearch" placeholder="Search by name, title or email…" value="${Pages.empFilter.q}" />
+            <input type="text" id="empSearch" placeholder="Search by ID, name, title or email…" value="${Pages.empFilter.q}" />
           </div>
           <div class="filterbar" style="margin:0">${chipHtml}</div>
         </div>
@@ -274,7 +290,7 @@ const Pages = {
     if (q) {
       const t = q.toLowerCase();
       list = list.filter((e) =>
-        H.fullName(e).toLowerCase().includes(t) || e.title.toLowerCase().includes(t) || e.email.toLowerCase().includes(t));
+        e.id.toLowerCase().includes(t) || H.fullName(e).toLowerCase().includes(t) || e.title.toLowerCase().includes(t) || e.email.toLowerCase().includes(t));
     }
     if (!list.length)
       return `<tr><td colspan="7"><div class="empty">${icon("search", 42)}<div>No employees match your search.</div></td></tr>`;
@@ -314,15 +330,44 @@ const Pages = {
           ${statusPill(e.status)}
         </div>
       </div>
-      <div style="display:flex;gap:10px;margin:18px 0" class="page-actions">
+      <div style="display:flex;gap:10px;margin:18px 0;flex-wrap:wrap" class="page-actions">
+        <button class="btn btn--primary btn--sm" data-action="view-comp" data-id="${e.id}">${icon("wallet", 16)} Compensation &amp; Benefits</button>
         <a class="btn btn--ghost btn--sm" href="mailto:${e.email}">${icon("mail", 16)} Email</a>
-        <button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("phone", 16)} Call</button>
         <button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("edit", 16)} Edit profile</button>
       </div>
       <div class="profile-meta">${meta}</div>`;
   },
 
   /* ---------------- TIME TRACKING ---------------- */
+  // Clock-in widget — your work mode (Office / Remote) is the "chosen option"
+  // that determines your status in today's attendance log.
+  clockWidget() {
+    const c = Pages.clock;
+    const statusText = c.in ? `Clocked in · ${c.inTime}` : `Clocked out · ${c.outTime}`;
+    const modeLabel = c.mode === "Remote" ? "working remotely" : "in the office";
+    const hint = c.in ? `Working since ${c.inTime} — ${modeLabel} today` : `Hours recorded for today · ${c.mode} mode`;
+    const modeToggle = ["Office", "Remote"].map((m) =>
+      `<button class="tab ${c.mode === m ? "active" : ""}" data-action="set-mode" data-mode="${m}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px">${icon(m === "Office" ? "office" : "home", 15)} ${m}</button>`).join("");
+    const btn = c.in
+      ? `<button class="btn btn--red" data-action="clock-toggle" style="min-width:160px">${icon("stop", 17)} Clock Out</button>`
+      : `<button class="btn btn--green" data-action="clock-toggle" style="min-width:160px">${icon("play", 17)} Clock In · ${c.mode}</button>`;
+    return `<div class="card col-span-2">
+      <div class="card__body" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div class="stat__icon ${c.in ? "tint-brand" : "tint-amber"}" style="width:56px;height:56px">${icon("clock", 28)}</div>
+        <div style="flex:1;min-width:190px">
+          <div class="flex items-center gap-8" style="font-size:13px;color:var(--text-2)">Your status · Wednesday ${c.in ? statusPill(c.mode === "Remote" ? "Remote" : "Present") : ""}</div>
+          <div class="big-num">${statusText}</div>
+          <div class="text-2" style="font-size:12.5px">${hint}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch;min-width:220px">
+          <span class="text-3" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Work mode</span>
+          <div class="tabs" style="display:flex">${modeToggle}</div>
+          ${btn}
+        </div>
+      </div>
+    </div>`;
+  },
+
   time() {
     const s = H.stats();
     const rows = DB.attendance.map((a) => {
@@ -362,17 +407,7 @@ const Pages = {
       </div>
 
       <div class="grid grid-3 section-gap">
-        <div class="card col-span-2">
-          <div class="card__body" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-            <div class="stat__icon tint-brand" style="width:56px;height:56px">${icon("clock", 28)}</div>
-            <div style="flex:1;min-width:180px">
-              <div class="text-2" style="font-size:13px">Your status · Wednesday</div>
-              <div class="big-num" id="clockStatus">Clocked in · 08:42</div>
-              <div class="text-2" id="clockHint" style="font-size:12.5px">Working since 08:42 — 5h 12m elapsed</div>
-            </div>
-            <button class="btn btn--red" id="clockBtn" data-action="clock-toggle" data-state="in" style="min-width:140px">${icon("stop", 17)} Clock Out</button>
-          </div>
-        </div>
+        ${Pages.clockWidget()}
         ${statCard({ icon: "users", tint: "tint-green", label: "Present / Remote", value: s.atWork + " / " + s.total, foot: s.attendanceRate + "% attendance" })}
       </div>
 
@@ -714,6 +749,173 @@ const Pages = {
       return `I can help with:<ul><li>Headcount & department breakdowns</li><li>Who's on leave / attendance today</li><li>Your leave balances</li><li>Pending approvals</li><li>Attrition, engagement & other metrics</li></ul>Just ask in plain language!`;
     }
     return `I'm a demo assistant, so I understand a focused set of HR questions. Try asking about <strong>headcount, attendance, leave balances, pending approvals, attrition</strong> or a specific department. (A production version would use the Claude API for open-ended questions.)`;
+  },
+
+  /* ---------------- COMPENSATION & BENEFITS ---------------- */
+  // Role-based access model that drives the "Viewing as" switcher
+  compAccessModel(role) {
+    return {
+      Employee:      { exact: true,  editSalary: false, editBenefits: false },
+      Manager:       { exact: false, editSalary: false, editBenefits: false },
+      HR:            { exact: true,  editSalary: true,  editBenefits: true  },
+      Payroll:       { exact: true,  editSalary: true,  editBenefits: false },
+      Administrator: { exact: true,  editSalary: true,  editBenefits: true  },
+    }[role] || { exact: false, editSalary: false, editBenefits: false };
+  },
+
+  comp() {
+    const emp = H.emp(Pages.compEmpId) || H.emp("EMP-001");
+    const rec = H.compFor(emp.id);
+    const c = rec.compensation;
+    const isSelf = emp.id === DB.currentUser.id;
+    const role = Pages.compRole;
+    const acc = Pages.compAccessModel(role);
+    const cur = c.currency;
+    const money = (n) => cur + n.toLocaleString("en-US");
+    const annual = c.salaryMonthly * 12;
+    const bandPct = Math.max(0, Math.min(100, Math.round(((c.salaryMonthly - c.band.min) / (c.band.max - c.band.min)) * 100)));
+    const ratio = c.salaryMonthly / c.band.mid;
+    const compaRatio = ratio.toFixed(2);
+    const activeBenefits = rec.benefits.filter((x) => x.enabled).length;
+
+    const banners = {
+      Employee:      { icon: "user",   tint: "tint-blue",   text: "Viewing as <strong>Employee</strong> — you can see your own salary and benefits, but not edit them." },
+      Manager:       { icon: "users",  tint: "tint-amber",  text: "Viewing as <strong>Manager</strong> — exact salaries are hidden; you see the <strong>salary band</strong> only." },
+      HR:            { icon: "shield", tint: "tint-green",  text: "Viewing as <strong>HR</strong> — you can edit salary and benefits." },
+      Payroll:       { icon: "dollar", tint: "tint-violet", text: "Viewing as <strong>Payroll</strong> — you can edit salary details, but not benefits." },
+      Administrator: { icon: "shield", tint: "tint-green",  text: "Viewing as <strong>Administrator</strong> — full access to all compensation data." },
+    };
+    const bn = banners[role];
+    const roleOptions = DB.compAccess.map((a) => `<option ${a.role === role ? "selected" : ""}>${a.role}</option>`).join("");
+
+    const salaryDisplay = acc.exact
+      ? `<div class="salary-hero"><span class="amount">${money(c.salaryMonthly)}</span><span class="per">/ month · gross</span></div>
+         <div class="text-2 mt-4">${money(annual)} annual${c.bonusEligible ? ` · +${c.bonusTarget}% bonus target (${money(Math.round(annual * c.bonusTarget / 100))})` : ""}</div>`
+      : `<div class="salary-masked">•••••• / month</div>
+         <div class="text-2 mt-4">Exact salary hidden for your role — band <strong>${money(c.band.min)}–${money(c.band.max)}</strong> (${c.grade})</div>`;
+
+    const bandBar = `
+      <div class="band-track">
+        <div class="band-mid"></div>
+        ${acc.exact ? `<div class="band-marker" style="left:${bandPct}%" data-label="${money(c.salaryMonthly)}"></div>` : ""}
+      </div>
+      <div class="band-labels"><span>${money(c.band.min)}</span><span>mid ${money(c.band.mid)}</span><span>${money(c.band.max)}</span></div>
+      ${acc.exact ? `<div class="mt-16 flex items-center gap-8"><span class="pill pill--${ratio >= 1 ? "green" : "amber"}">Compa-ratio ${compaRatio}</span><span class="text-2" style="font-size:12.5px">${ratio === 1 ? "At band midpoint" : ratio > 1 ? "Above midpoint" : "Below midpoint"}</span></div>` : ""}`;
+
+    const meta = [
+      { label: "Salary grade / band", val: c.band.name },
+      { label: "Effective date", val: H.fmtDate(c.effectiveDate) },
+      { label: "Employment %", val: c.fte + "%" },
+      { label: "Bonus eligibility", val: c.bonusEligible ? `Yes · ${c.bonusTarget}% target` : "Not eligible" },
+      { label: "Next salary review", val: H.fmtDate(c.nextReview) },
+      { label: "Pay frequency", val: c.payFrequency },
+    ].map((m) => `<div class="meta-item"><div class="mi-label">${m.label}</div><div class="mi-val">${m.val}</div></div>`).join("");
+
+    const benefitCards = rec.benefits.map((bf) => {
+      const control = acc.editBenefits
+        ? `<button class="switch ${bf.enabled ? "on" : ""}" data-action="toggle-benefit" data-id="${bf.id}" aria-pressed="${bf.enabled}"><span class="switch-knob"></span></button>`
+        : `${bf.enabled ? pill("Active", "green") : pill("Off", "gray")}${icon("lock", 15)}`;
+      return `<div class="benefit ${bf.enabled ? "benefit--on" : ""}">
+        <div class="benefit__icon ${bf.tint}">${icon(bf.icon, 20)}</div>
+        <div class="benefit__info">
+          <div class="benefit__name">${bf.name}</div>
+          <div class="benefit__desc">${bf.desc}</div>
+          <div class="benefit__meta">${bf.value} · ${bf.taxable ? pill("Taxable", "amber") : pill("Tax-free", "teal")}</div>
+        </div>
+        <div class="benefit__control">${control}</div>
+      </div>`;
+    }).join("");
+
+    const sortedComp = rec.history.slice().sort((a, z) => (a.date < z.date ? 1 : -1));
+    const compRows = sortedComp.map((h, i) => {
+      const prev = sortedComp[i + 1];
+      const delta = prev ? h.salary - prev.salary : null;
+      const deltaHtml = delta === null ? '<span class="muted">—</span>' : `<span class="trend trend--up">${icon("trendUp", 13)} +${money(delta)}</span>`;
+      return `<tr>
+        <td class="nowrap">${H.fmtDate(h.date)}</td>
+        <td><strong>${acc.exact ? money(h.salary) : "••••"}</strong></td>
+        <td>${acc.exact ? deltaHtml : '<span class="muted">—</span>'}</td>
+        <td class="muted">${h.reason}</td>
+      </tr>`;
+    }).join("");
+
+    const benRows = rec.benefitsHistory.slice().sort((a, z) => (a.date < z.date ? 1 : -1)).map((h) => `
+      <div class="list-row">
+        <span class="dot-icon ${h.action === "added" ? "tint-green" : "tint-red"}">${icon(h.action === "added" ? "plus" : "x", 16)}</span>
+        <div><div class="lr-title">${h.benefit}</div><div class="lr-sub">${h.action === "added" ? "Added" : "Removed"} by ${h.by}</div></div>
+        <span class="lr-time">${H.fmtDateShort(h.date)}</span>
+      </div>`).join("");
+
+    const permRows = DB.compAccess.map((a) => `
+      <tr class="${a.role === role ? "perm-active" : ""}">
+        <td>${roleBadge(a.role)}</td>
+        <td class="muted">${a.access}</td>
+        <td>${a.role === role ? pill("Viewing", "brand") : ""}</td>
+      </tr>`).join("");
+
+    const empOptions = DB.employees.slice()
+      .sort((a, z) => H.fullName(a).localeCompare(H.fullName(z)))
+      .map((e) => `<option value="${e.id}" ${e.id === emp.id ? "selected" : ""}>${H.fullName(e)}${e.id === DB.currentUser.id ? " (me)" : ""}</option>`).join("");
+
+    return `
+      <div class="page-head">
+        <div class="flex items-center gap-12">
+          ${avatar(emp, "avatar--lg")}
+          <div>
+            <h2 style="font-size:20px">${H.fullName(emp)}${isSelf ? ' <span class="pill pill--gray" style="vertical-align:middle;font-size:11px">You</span>' : ""}</h2>
+            <p>${emp.title} · ${H.deptName(emp.dept)} · ${emp.id}</p>
+          </div>
+        </div>
+        <div class="page-actions" style="align-items:center;gap:10px">
+          <label class="flex items-center gap-8" style="font-size:12.5px;color:var(--text-2);font-weight:600">Employee
+            <select class="select" id="compEmpSelect" style="width:auto;max-width:200px">${empOptions}</select>
+          </label>
+          <label class="flex items-center gap-8" style="font-size:12.5px;color:var(--text-2);font-weight:600">Viewing as
+            <select class="select" id="compRoleSelect" style="width:auto">${roleOptions}</select>
+          </label>
+          ${acc.editSalary ? `<button class="btn btn--primary" data-action="edit-comp">${icon("edit", 16)} Edit salary</button>` : ""}
+        </div>
+      </div>
+
+      <div class="banner"><span class="banner__icon ${bn.tint}">${icon(bn.icon, 18)}</span><div>${bn.text}</div></div>
+
+      <div class="grid grid-3 section-gap">
+        <div class="card col-span-2">
+          <div class="card__head"><div><div class="card__title">Current Compensation</div><div class="card__sub">Effective ${H.fmtDate(c.effectiveDate)}</div></div>${acc.editSalary ? "" : pill("Read-only", "gray")}</div>
+          <div class="card__body">${salaryDisplay}<div class="profile-meta mt-20">${meta}</div></div>
+        </div>
+        <div class="card">
+          <div class="card__head"><div class="card__title">Salary Band</div><span class="pill pill--violet">${c.grade}</span></div>
+          <div class="card__body">${bandBar}</div>
+        </div>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card__head"><div><div class="card__title">Benefits</div><div class="card__sub">${activeBenefits} of ${rec.benefits.length} active${acc.editBenefits ? " · toggle to enrol / remove" : ""}</div></div>${acc.editBenefits ? pill("Editable", "green") : `<span class="flex items-center gap-8 text-3" style="font-size:12px">${icon("lock", 14)} Read-only</span>`}</div>
+        <div class="card__body"><div class="grid grid-2">${benefitCards}</div></div>
+      </div>
+
+      <div class="grid grid-3 section-gap">
+        <div class="card col-span-2">
+          <div class="card__head"><div class="card__title">Compensation History</div></div>
+          <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl">
+            <thead><tr><th>Effective Date</th><th>Salary</th><th>Change</th><th>Reason</th></tr></thead>
+            <tbody>${compRows}</tbody>
+          </table></div></div>
+        </div>
+        <div class="card">
+          <div class="card__head"><div class="card__title">Benefits History</div></div>
+          <div class="card__body"><div class="list timeline">${benRows}</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__head"><div><div class="card__title">Permissions</div><div class="card__sub">Role-based access control (RBAC) for compensation data</div></div>${icon("shield", 18)}</div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl">
+          <thead><tr><th>Role</th><th>Access</th><th></th></tr></thead>
+          <tbody>${permRows}</tbody>
+        </table></div></div>
+      </div>`;
   },
 
   /* ---------------- SETTINGS ---------------- */
