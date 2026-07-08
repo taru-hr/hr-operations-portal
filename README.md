@@ -15,7 +15,11 @@ analytics and an AI assistant.
 ## ✨ Highlights
 
 - **10 fully navigable sections** — Dashboard, Employees, Time Clock, Attendance,
-  Leave Management, Compensation & Benefits, Approvals, Reports, AI Assistant, Settings.
+  Leave Management, Compensation & Benefits, Approvals, Reports, AI Assistant, System Administration.
+- **A full System Administration console** — a 13-area admin back-office (org structure,
+  job architecture, RBAC permission matrix, working-time & leave rules, approval workflows,
+  notifications, integrations, data governance, audit log, security, localization & AI config)
+  showing the configuration layer an HRIS specialist owns.
 - **Internally consistent data** — every KPI, chart and table is computed live
   from a single mock dataset, so the app behaves like a real system.
 - **Role-based access control (RBAC) demo** — a "Viewing as" switcher on the
@@ -42,7 +46,7 @@ analytics and an AI assistant.
 | ✅ **Approvals** | Unified queue for leave, timesheets, expenses & equipment with approve/reject |
 | 📊 **Reports** | People analytics: headcount, attendance, leave, attrition & engagement |
 | 🤖 **AI Assistant** | Ask HR questions in plain language (rule-based over the demo data) |
-| ⚙️ **Settings** | Company profile, preferences, departments, leave policy & role-based access |
+| ⚙️ **System Administration** | 13-area admin console — org structure, job architecture, **RBAC permission matrix**, working-time & leave configuration, **approval workflows**, notifications, integrations, data governance (GDPR retention), **audit log**, security, localization & **AI configuration** |
 
 ## 🚀 Run it
 

@@ -34,6 +34,12 @@ const Icons = {
   gift: `<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13"/><path d="M12 8S10.8 4 8.8 4a2 2 0 0 0 0 4H12ZM12 8s1.2-4 3.2-4a2 2 0 0 1 0 4H12Z"/>`,
   percent: `<path d="M19 5 5 19"/><circle cx="7.5" cy="7.5" r="2.2"/><circle cx="16.5" cy="16.5" r="2.2"/>`,
   lock: `<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>`,
+  sitemap: `<rect x="9" y="2.5" width="6" height="5" rx="1"/><rect x="2.5" y="16.5" width="6" height="5" rx="1"/><rect x="15.5" y="16.5" width="6" height="5" rx="1"/><path d="M12 7.5v4M5.5 16.5v-3h13v3M12 11.5v2"/>`,
+  layers: `<path d="M12 2.5 2.5 7 12 11.5 21.5 7 12 2.5Z"/><path d="M2.5 12 12 16.5 21.5 12M2.5 16.5 12 21 21.5 16.5"/>`,
+  workflow: `<rect x="3" y="3.5" width="6" height="5" rx="1"/><rect x="15" y="3.5" width="6" height="5" rx="1"/><rect x="9" y="15.5" width="6" height="5" rx="1"/><path d="M6 8.5v2.5h12V8.5M12 11v4.5"/>`,
+  plug: `<path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0V8Z"/><path d="M12 17v5"/>`,
+  database: `<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>`,
+  history: `<path d="M3 4v5h5"/><path d="M3.5 9a9 9 0 1 1-1 4"/><path d="M12 8v4l3 2"/>`,
   dollar: `<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
   laptop: `<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/>`,
   doc: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>`,
@@ -161,6 +167,16 @@ function balanceCard(b) {
       </div>
     </div>
   </div></div>`;
+}
+
+// System Administration console helpers
+function setRow(title, sub, control) {
+  return `<div class="set-row"><div><div class="sr-title">${title}</div>${sub ? `<div class="sr-sub">${sub}</div>` : ""}</div><div class="sr-control">${control}</div></div>`;
+}
+function sw(on) { return `<button class="switch ${on ? "on" : ""}" data-action="toggle-demo" role="switch" aria-checked="${!!on}"><span class="switch-knob"></span></button>`; }
+function accessPill(level) {
+  const m = { View: "blue", Edit: "amber", Full: "green" };
+  return level === "None" ? '<span class="muted">—</span>' : pill(level, m[level] || "gray");
 }
 
 /* ============================================================
@@ -1057,81 +1073,359 @@ const Pages = {
       </div>`;
   },
 
-  /* ---------------- SETTINGS ---------------- */
-  settingsTab: "company",
-  settings() {
-    const tabs = [["company", "Company"], ["preferences", "Preferences"], ["departments", "Departments"], ["policy", "Leave Policy"], ["roles", "Roles & Access"]];
-    const tabHtml = tabs.map(([id, label]) =>
-      `<button class="tab ${Pages.settingsTab === id ? "active" : ""}" data-action="settings-tab" data-tab="${id}">${label}</button>`).join("");
+  /* ---------------- SYSTEM ADMINISTRATION ---------------- */
+  adminSection: "org",
+  adminEnv: "Production",
+  admin() {
+    const NAV = [
+      ["Organization", [["org", "Organization Structure", "sitemap"], ["jobs", "Job Architecture", "layers"]]],
+      ["Time & Leave", [["wtime", "Working Time Rules", "clock"], ["leavecfg", "Leave Configuration", "leave"], ["workflows", "Approval Workflows", "workflow"]]],
+      ["Access & Security", [["roles", "User Roles & Permissions", "shield"], ["security", "Security", "lock"], ["audit", "Audit Log", "history"]]],
+      ["Platform", [["notifications", "Notifications", "bell"], ["integrations", "Integrations", "plug"], ["data", "Data Management", "database"], ["localization", "Localization", "globe"], ["ai", "AI Configuration", "assistant"]]],
+    ];
+    const navHtml = NAV.map(([group, items]) =>
+      `<span class="admin-nav-label">${group}</span>` +
+      items.map(([key, label, ic]) => `<button class="admin-nav-item ${Pages.adminSection === key ? "active" : ""}" data-action="admin-section" data-section="${key}">${icon(ic, 17)}<span>${label}</span></button>`).join("")
+    ).join("");
+    const env = Pages.adminEnv;
+    const envSwitch = `<div class="env-switch" role="group" aria-label="Environment">
+      <button class="env-opt env-opt--prod ${env === "Production" ? "active" : ""}" data-action="set-env" data-env="Production"><span class="dot"></span>Production</button>
+      <button class="env-opt env-opt--sandbox ${env === "Sandbox" ? "active" : ""}" data-action="set-env" data-env="Sandbox"><span class="dot"></span>Sandbox</button>
+    </div>`;
+    const sandboxBanner = env === "Sandbox"
+      ? `<div class="banner banner--sandbox"><span class="banner__icon tint-amber">${icon("alert", 18)}</span>
+          <div style="flex:1"><strong>Sandbox environment</strong> — you're working in a test copy. Configuration changes here won't affect live data or employees.</div>
+          <button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("check", 15)} Publish to Production</button></div>`
+      : "";
     return `
-      <div class="page-head"><div><h2>Settings</h2><p>Configure your HR portal</p></div></div>
-      <div class="tabs section-gap">${tabHtml}</div>
-      <div id="settingsBody">${Pages.settingsBody()}</div>`;
+      <div class="page-head">
+        <div><h2>System Administration</h2><p>Platform configuration &amp; governance</p></div>
+        <div class="page-actions" style="align-items:center;gap:10px"><span class="text-2" style="font-size:12.5px;font-weight:600">Environment</span>${envSwitch}</div>
+      </div>
+      ${sandboxBanner}
+      <div class="admin-layout">
+        <aside class="admin-nav">${navHtml}</aside>
+        <div class="admin-content" id="adminContent">${Pages.adminContent(Pages.adminSection)}</div>
+      </div>`;
   },
 
-  settingsBody() {
-    switch (Pages.settingsTab) {
-      case "company":
-        return card("Company Profile", "Organisation details", `
-          <div class="form-row">
-            <div class="field"><label>Company name</label><input class="input" value="${DB.company.name}" /></div>
-            <div class="field"><label>Legal entity</label><input class="input" value="${DB.company.legal}" /></div>
-          </div>
-          <div class="form-row">
-            <div class="field"><label>Headquarters</label><input class="input" value="${DB.company.location}" /></div>
-            <div class="field"><label>Standard work week (hours)</label><input class="input" type="number" value="${DB.company.workweekHours}" /></div>
-          </div>
-          <div class="field"><label>Founded</label><input class="input" value="${DB.company.founded}" style="max-width:160px" /></div>
-          <button class="btn btn--primary" data-action="save-settings">${icon("check", 17)} Save changes</button>`);
-      case "preferences":
-        return card("Preferences", "Personalise your experience", `
-          <div class="field"><label>Theme</label>
-            <div class="filterbar">
-              <button class="chip" data-action="set-theme" data-theme="light">☀️ Light</button>
-              <button class="chip" data-action="set-theme" data-theme="dark">🌙 Dark</button>
-            </div>
-          </div>
-          <div class="field"><label>Default landing page</label>
-            <select class="select" style="max-width:260px"><option>Dashboard</option><option>Approvals</option><option>Employees</option></select></div>
-          <div class="field"><label>Notifications</label>
-            <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
-              <label style="display:flex;gap:10px;align-items:center;font-weight:500"><input type="checkbox" checked /> Email me when a request needs approval</label>
-              <label style="display:flex;gap:10px;align-items:center;font-weight:500"><input type="checkbox" checked /> Weekly people-metrics digest</label>
-              <label style="display:flex;gap:10px;align-items:center;font-weight:500"><input type="checkbox" /> Birthday & anniversary reminders</label>
-            </div></div>
-          <button class="btn btn--primary" data-action="save-settings">${icon("check", 17)} Save preferences</button>`);
-      case "departments": {
-        const rows = DB.departments.map((d) => {
-          const cnt = DB.employees.filter((e) => e.dept === d.id).length;
-          return `<tr><td><span class="pill pill--gray"><span class="dot" style="background:${d.color}"></span>${d.name}</span></td><td>${d.head}</td><td><strong>${cnt}</strong></td><td><button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("edit", 15)} Edit</button></td></tr>`;
-        }).join("");
-        return `<div class="card"><div class="card__head"><div class="card__title">Departments</div><button class="btn btn--primary btn--sm" data-action="toast-demo">${icon("plus", 16)} Add department</button></div>
-          <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Department</th><th>Lead</th><th>People</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
-      }
-      case "policy":
-        return card("Leave Policy", "Entitlements by leave type (per collective agreement · TES)", `
-          <div class="table-wrap"><table class="tbl">
-            <thead><tr><th>Leave type</th><th>Allowance / year</th><th>Accrual</th><th>Carryover</th></tr></thead>
-            <tbody>
-              <tr><td><strong>Annual Leave</strong></td><td>30 days</td><td>Monthly (2.5 d/mo)</td><td>5 days</td></tr>
-              <tr><td><strong>Sick Leave</strong></td><td>Per TES</td><td>As incurred</td><td>—</td></tr>
-              <tr><td><strong>Personal Leave</strong></td><td>Per TES</td><td>As incurred</td><td>—</td></tr>
-              <tr><td><strong>Parental Leave</strong></td><td>Statutory</td><td>—</td><td>—</td></tr>
-            </tbody>
-          </table></div>
-          <button class="btn btn--primary mt-16" data-action="save-settings">${icon("check", 17)} Update policy</button>`);
-      case "roles":
-        return card("Roles & Access", "Who can see and do what", `
-          <div class="table-wrap"><table class="tbl">
-            <thead><tr><th>Role</th><th>Members</th><th>Permissions</th></tr></thead>
-            <tbody>
-              <tr><td><span class="pill pill--violet">HR Admin</span></td><td>3</td><td class="muted">Full access · manage all data & settings</td></tr>
-              <tr><td><span class="pill pill--blue">Manager</span></td><td>8</td><td class="muted">Approve team requests · view team data</td></tr>
-              <tr><td><span class="pill pill--teal">Employee</span></td><td>22</td><td class="muted">Self-service · own profile, leave & timesheet</td></tr>
-              <tr><td><span class="pill pill--gray">Finance</span></td><td>2</td><td class="muted">Payroll & expense approvals</td></tr>
-            </tbody>
-          </table></div>
-          <button class="btn btn--primary mt-16" data-action="toast-demo">${icon("shield", 17)} Manage roles</button>`);
-    }
+  adminContent(section) {
+    const fn = {
+      org: Pages.adminOrg, jobs: Pages.adminJobs, wtime: Pages.adminWorkingTime, leavecfg: Pages.adminLeaveConfig,
+      workflows: Pages.adminWorkflows, roles: Pages.adminRoles, security: Pages.adminSecurity, audit: Pages.adminAudit,
+      notifications: Pages.adminNotifications, integrations: Pages.adminIntegrations, data: Pages.adminData,
+      localization: Pages.adminLocalization, ai: Pages.adminAI,
+    }[section];
+    return fn ? fn() : "";
+  },
+
+  // ---- Organization Structure ----
+  adminOrg() {
+    const depts = DB.departments.map((d, i) => {
+      const cnt = DB.employees.filter((e) => e.dept === d.id).length;
+      return `<tr><td><span class="pill pill--gray"><span class="dot" style="background:${d.color}"></span>${d.name}</span></td><td>${d.head}</td><td class="muted">CC-${100 + i * 10}</td><td><strong>${cnt}</strong></td></tr>`;
+    }).join("");
+    const entities = [
+      ["TaruHR Technologies Oy", "Finland 🇫🇮", "FI-28471920", "EUR", 20],
+      ["TaruHR Inc.", "United States 🇺🇸", "US-DE-90114", "USD", 2],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td class="muted">${r[1]}</td><td class="muted">${r[2]}</td><td class="muted">${r[3]}</td><td><strong>${r[4]}</strong></td></tr>`).join("");
+    const locs = [
+      ["Helsinki (HQ)", "Finland", "Europe/Helsinki", 8], ["London", "United Kingdom", "Europe/London", 3],
+      ["Berlin", "Germany", "Europe/Berlin", 2], ["New York", "United States", "America/New_York", 3],
+      ["Amsterdam", "Netherlands", "Europe/Amsterdam", 2], ["Remote / other", "—", "Various", 4],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td class="muted">${r[1]}</td><td class="muted">${r[2]}</td><td>${r[3]}</td></tr>`).join("");
+    return `
+      <div class="grid grid-4 section-gap">
+        ${statCard({ icon: "building", tint: "tint-brand", label: "Legal Entities", value: 2, foot: "FI · US" })}
+        ${statCard({ icon: "sitemap", tint: "tint-violet", label: "Departments", value: DB.departments.length, foot: "Active" })}
+        ${statCard({ icon: "pin", tint: "tint-teal", label: "Locations", value: 6, foot: "5 countries" })}
+        ${statCard({ icon: "users", tint: "tint-green", label: "Headcount", value: DB.employees.length, foot: "All entities" })}
+      </div>
+      <div class="card"><div class="card__head"><div class="card__title">Legal Entities</div><button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("plus", 15)} Add entity</button></div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Entity</th><th>Country</th><th>Registration</th><th>Currency</th><th>Employees</th></tr></thead><tbody>${entities}</tbody></table></div></div></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div class="card__title">Departments &amp; Cost Centres</div></div><div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Department</th><th>Lead</th><th>Cost centre</th><th>People</th></tr></thead><tbody>${depts}</tbody></table></div></div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Locations</div></div><div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Office</th><th>Country</th><th>Timezone</th><th>People</th></tr></thead><tbody>${locs}</tbody></table></div></div></div>
+      </div>`;
+  },
+
+  // ---- Job Architecture (ties to compensation bands) ----
+  adminJobs() {
+    const grades = [
+      ["P1", "Associate", "Individual contributor", "€2,400 – €3,300"],
+      ["P2", "Professional", "Individual contributor", "€3,000 – €4,000"],
+      ["P3", "Senior Professional", "Individual contributor", "€3,200 – €4,400"],
+      ["M3", "Manager", "Management", "€4,200 – €5,800"],
+      ["M4", "Leadership", "Management", "€5,600 – €8,000"],
+    ].map((r) => `<tr><td><span class="pill pill--violet">${r[0]}</span></td><td><strong>${r[1]}</strong></td><td class="muted">${r[2]}</td><td class="muted">${r[3]}</td></tr>`).join("");
+    const families = ["Engineering", "Product", "Design", "Sales", "Marketing", "Customer Success", "Finance", "People & Culture"]
+      .map((f) => `<span class="pill pill--gray">${f}</span>`).join(" ");
+    const gradeFor = { 1: "P1", 2: "P2", 3: "P3", 4: "M3", 5: "M4" };
+    const catalog = DB.employees.slice(0, 8).map((e) => `<tr><td><strong>${e.title}</strong></td><td class="muted">${H.deptName(e.dept)}</td><td><span class="pill pill--violet">${gradeFor[compLevel(e.title)]}</span></td></tr>`).join("");
+    return `
+      <div class="card"><div class="card__head"><div><div class="card__title">Job Levels &amp; Grades</div><div class="card__sub">Levelling framework — feeds compensation bands</div></div>${pill("Synced with Compensation", "green")}</div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Grade</th><th>Level</th><th>Track</th><th>Monthly band (FTE)</th></tr></thead><tbody>${grades}</tbody></table></div></div></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div class="card__title">Job Families</div></div><div class="card__body"><div style="display:flex;flex-wrap:wrap;gap:8px">${families}</div><p class="text-2 mt-16" style="font-size:12.5px">8 families · used for career paths, pay benchmarking and org reporting.</p></div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Job Catalog</div><span class="text-2" style="font-size:12.5px">sample</span></div><div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Job title</th><th>Family</th><th>Grade</th></tr></thead><tbody>${catalog}</tbody></table></div></div></div>
+      </div>`;
+  },
+
+  // ---- Working Time Rules ----
+  adminWorkingTime() {
+    const schedules = [
+      ["Standard full-time", "37.5", "Mon–Fri", "10:00–15:00", "±2h"],
+      ["Part-time 80%", "30.0", "Mon–Thu", "10:00–15:00", "±2h"],
+      ["Customer Success (shift)", "37.5", "Rotating", "—", "Fixed"],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td>${r[1]} h</td><td class="muted">${r[2]}</td><td class="muted">${r[3]}</td><td class="muted">${r[4]}</td></tr>`).join("");
+    const holidays = [
+      ["1 Jan", "New Year's Day"], ["6 Jan", "Epiphany"], ["3 Apr", "Good Friday"], ["6 Apr", "Easter Monday"],
+      ["1 May", "May Day (Vappu)"], ["14 May", "Ascension Day"], ["19 Jun", "Midsummer Eve"], ["6 Dec", "Independence Day"],
+      ["24–26 Dec", "Christmas"],
+    ].map((r) => `<div class="list-row"><span class="dot-icon tint-teal">${icon("calendar", 16)}</span><div><div class="lr-title">${r[1]}</div></div><span class="lr-time">${r[0]}</span></div>`).join("");
+    return `
+      <div class="card"><div class="card__head"><div class="card__title">Work Schedules</div><button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("plus", 15)} New schedule</button></div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Schedule</th><th>Hours / week</th><th>Working days</th><th>Core hours</th><th>Flextime</th></tr></thead><tbody>${schedules}</tbody></table></div></div></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div class="card__title">Overtime &amp; Breaks</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Overtime threshold", "Hours before overtime applies", '<span class="pill pill--gray">37.5 h / week</span>')}
+          ${setRow("Overtime rate", "Weekday / Sunday", '<span class="pill pill--gray">150% / 200%</span>')}
+          ${setRow("Daily rest", "Minimum between shifts", '<span class="pill pill--gray">11 hours</span>')}
+          ${setRow("Break", "Unpaid break after 6 h", '<span class="pill pill--gray">30 min</span>')}
+          ${setRow("Auto clock-out", "Force clock-out if forgotten", sw(true))}
+        </div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Public Holidays 2026</div><span class="text-2" style="font-size:12.5px">Finland</span></div><div class="card__body"><div class="list">${holidays}</div></div></div>
+      </div>`;
+  },
+
+  // ---- Leave Configuration ----
+  adminLeaveConfig() {
+    const types = [
+      ["Annual Leave", "30 days", "2.5 d / month", "5 days", "40 days", "Required", "Paid"],
+      ["Sick Leave", "Per TES", "As incurred", "—", "—", "Notify", "Paid"],
+      ["Personal Leave", "Per TES", "As incurred", "—", "—", "Required", "Paid"],
+      ["Parental Leave", "Statutory", "—", "—", "—", "Required", "Statutory"],
+      ["Unpaid Leave", "On request", "—", "—", "—", "Required", "Unpaid"],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td><td class="muted">${r[2]}</td><td class="muted">${r[3]}</td><td class="muted">${r[4]}</td><td>${r[5] === "Required" ? pill("Required", "amber") : pill(r[5], "gray")}</td><td>${r[6] === "Unpaid" ? pill("Unpaid", "gray") : pill(r[6], "green")}</td></tr>`).join("");
+    return `
+      <div class="card"><div class="card__head"><div><div class="card__title">Leave Types</div><div class="card__sub">Accrual, carryover &amp; approval rules</div></div><button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("plus", 15)} Add type</button></div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Leave type</th><th>Allowance</th><th>Accrual</th><th>Carryover</th><th>Max balance</th><th>Approval</th><th>Paid</th></tr></thead><tbody>${types}</tbody></table></div></div></div>
+      <div class="card"><div class="card__head"><div class="card__title">Accrual &amp; Rules</div></div><div class="card__body" style="padding-top:4px">
+        ${setRow("Accrual basis", "How annual leave is earned", '<span class="pill pill--gray">Monthly (2.5 d/mo)</span>')}
+        ${setRow("Pro-rate for part-time", "Scale allowance by FTE %", sw(true))}
+        ${setRow("Allow negative balance", "Let employees borrow ahead", sw(false))}
+        ${setRow("Carryover expiry", "Unused carried days expire", '<span class="pill pill--gray">31 March</span>')}
+        ${setRow("Public holidays deducted", "Count holidays as leave", sw(false))}
+      </div></div>`;
+  },
+
+  // ---- Approval Workflows ----
+  adminWorkflows() {
+    const flow = (steps) => `<div class="flow">` + steps.map((s, i) => `${i > 0 ? `<span class="flow-arrow">${icon("chevronRight", 16)}</span>` : ""}<span class="flow-step"><span class="fs-num">${i + 1}</span>${s}</span>`).join("") + `</div>`;
+    const wf = [
+      ["Leave request", ["Employee", "Line manager", "HR review"], "HR step only when request > 10 days"],
+      ["Timesheet", ["Employee", "Line manager"], "Auto-approved if within schedule ±15 min"],
+      ["Expense claim", ["Employee", "Line manager", "Finance"], "Finance step only when amount > €500"],
+      ["Equipment request", ["Employee", "Line manager", "IT"], "Assets provisioned after IT approval"],
+      ["Salary change", ["HR", "Head of department", "Finance"], "Off-cycle changes require Finance sign-off"],
+    ].map((w) => `<div class="card"><div class="card__body">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+          <div class="card__title">${w[0]}</div>${pill("Active", "green")}</div>
+        ${flow(w[1])}
+        <div class="flow-cond mt-16">${icon("info", 13)} ${w[2]}</div>
+      </div></div>`).join("");
+    return `
+      <div class="banner"><span class="banner__icon tint-brand">${icon("workflow", 18)}</span><div>Approval chains route each request type through the right approvers. Steps can be conditional on amount, duration or department.</div></div>
+      <div class="grid" style="gap:16px">${wf}</div>
+      <div class="card" style="margin-top:16px"><div class="card__head"><div class="card__title">Global Rules</div></div><div class="card__body" style="padding-top:4px">
+        ${setRow("Escalation", "Auto-escalate if pending > 48h", sw(true))}
+        ${setRow("Delegation", "Approvers can delegate while away", sw(true))}
+        ${setRow("Approver can't approve own request", "Segregation of duties", sw(true))}
+      </div></div>`;
+  },
+
+  // ---- User Roles & Permissions (RBAC matrix) ----
+  adminRoles() {
+    const roles = ["Employee", "Manager", "HR", "Payroll", "Admin"];
+    const matrix = [
+      ["Dashboard", ["View", "View", "View", "View", "Full"]],
+      ["Employees", ["View", "View", "Full", "View", "Full"]],
+      ["Time & Attendance", ["Edit", "Edit", "Full", "View", "Full"]],
+      ["Leave", ["Edit", "Edit", "Full", "View", "Full"]],
+      ["Compensation", ["None", "View", "Full", "Edit", "Full"]],
+      ["Approvals", ["None", "Edit", "Full", "Edit", "Full"]],
+      ["Reports", ["None", "View", "Full", "View", "Full"]],
+      ["System Admin", ["None", "None", "Edit", "None", "Full"]],
+    ];
+    const head = `<tr><th>Module</th>${roles.map((r) => `<th style="text-align:center">${r}</th>`).join("")}</tr>`;
+    const body = matrix.map(([m, cells]) => `<tr><td><strong>${m}</strong></td>${cells.map((c) => `<td style="text-align:center">${accessPill(c)}</td>`).join("")}</tr>`).join("");
+    const counts = { Employee: DB.employees.length, Manager: 8, HR: 3, Payroll: 2, Admin: 1 };
+    const roleCards = roles.map((r) => `<div class="set-row"><div><div class="sr-title">${roleBadge(r)}</div></div><div class="sr-control"><span class="text-2" style="font-size:12.5px">${counts[r]} member${counts[r] === 1 ? "" : "s"}</span></div></div>`).join("");
+    return `
+      <div class="card"><div class="card__head"><div><div class="card__title">Permission Matrix</div><div class="card__sub">Access level per module, per role (RBAC)</div></div>
+        <div class="matrix-legend">${accessPill("View")} view · ${accessPill("Edit")} edit · ${accessPill("Full")} full · — none</div></div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead>${head}</thead><tbody>${body}</tbody></table></div></div></div>
+      <div class="card"><div class="card__head"><div class="card__title">Roles</div><button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("plus", 15)} New role</button></div><div class="card__body" style="padding-top:4px">${roleCards}</div></div>`;
+  },
+
+  // ---- Security ----
+  adminSecurity() {
+    const logins = [
+      ["Taru Hervoe", "Today 08:41", "Helsinki, FI", "SSO · Azure AD", "Success"],
+      ["Sarah Chen", "Today 09:03", "Helsinki, FI", "SSO · Azure AD", "Success"],
+      ["Unknown", "Today 06:30", "Unknown (203.0.113.7)", "Password", "Blocked"],
+      ["Marcus Johnson", "Yesterday 08:15", "Berlin, DE", "SSO · Azure AD", "Success"],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td class="muted">${r[1]}</td><td class="muted">${r[2]}</td><td class="muted">${r[3]}</td><td>${r[4] === "Success" ? pill("Success", "green") : pill("Blocked", "red")}</td></tr>`).join("");
+    return `
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div class="card__title">Authentication</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Single sign-on (SSO)", "SAML 2.0 · Microsoft Azure AD", sw(true))}
+          ${setRow("Enforce MFA", "Multi-factor for all users", sw(true))}
+          ${setRow("IP allow-list", "Restrict access by network", sw(false))}
+          ${setRow("Just-in-time provisioning", "Create users on first SSO login", sw(true))}
+        </div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Password Policy</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Minimum length", "", '<span class="pill pill--gray">12 characters</span>')}
+          ${setRow("Complexity", "Upper, lower, number, symbol", sw(true))}
+          ${setRow("Expiry", "", '<span class="pill pill--gray">90 days</span>')}
+          ${setRow("Session timeout", "Idle logout", '<span class="pill pill--gray">30 minutes</span>')}
+        </div></div>
+      </div>
+      <div class="card"><div class="card__head"><div><div class="card__title">Recent Sign-in Activity</div><div class="card__sub">Encryption: AES-256 at rest · TLS 1.3 in transit</div></div></div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>User</th><th>When</th><th>Location</th><th>Method</th><th>Status</th></tr></thead><tbody>${logins}</tbody></table></div></div></div>`;
+  },
+
+  // ---- Audit Log ----
+  adminAudit() {
+    const tone = { config: "amber", data: "blue", access: "violet", approval: "green" };
+    const log = [
+      ["08 Jul 09:14", "Taru Hervoe", "config", "Updated leave policy — annual 25 → 30 days", "10.0.4.21"],
+      ["08 Jul 08:57", "Taru Hervoe", "data", "Edited salary — Marcus Johnson (EMP-003)", "10.0.4.21"],
+      ["08 Jul 08:41", "Taru Hervoe", "access", "SSO sign-in (Azure AD)", "10.0.4.21"],
+      ["07 Jul 17:22", "Sarah Chen", "approval", "Approved leave LV-1043 — Daniel Novak", "10.2.1.8"],
+      ["07 Jul 15:03", "Isabella Rossi", "data", "Added employee — Grace Okonkwo (EMP-013)", "10.0.4.35"],
+      ["07 Jul 11:48", "Taru Hervoe", "config", "Changed expense workflow — threshold €500", "10.0.4.21"],
+      ["06 Jul 16:10", "Omar Haddad", "data", "Exported report — Headcount (CSV)", "10.0.4.40"],
+      ["06 Jul 06:30", "Unknown", "access", "Blocked sign-in attempt", "203.0.113.7"],
+      ["05 Jul 14:05", "Taru Hervoe", "config", "Updated role permissions — Payroll", "10.0.4.21"],
+    ].map((r) => `<tr><td class="muted nowrap">${r[0]}</td><td><strong>${r[1]}</strong></td><td>${pill(r[2], tone[r[2]])}</td><td>${r[3]}</td><td class="muted">${r[4]}</td></tr>`).join("");
+    return `
+      <div class="card"><div class="card__head"><div><div class="card__title">Audit Log</div><div class="card__sub">Immutable record of data &amp; configuration changes</div></div>
+        <button class="btn btn--ghost btn--sm" data-action="export">${icon("download", 15)} Export</button></div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Timestamp</th><th>User</th><th>Type</th><th>Action</th><th>IP</th></tr></thead><tbody>${log}</tbody></table></div></div></div>`;
+  },
+
+  // ---- Notifications ----
+  adminNotifications() {
+    const events = [
+      ["Leave requested", "Manager", 1, 1, 1], ["Leave approved / rejected", "Employee", 1, 1, 0],
+      ["Timesheet reminder", "Employee", 1, 1, 0], ["Approval pending > 48h", "Approver", 1, 1, 1],
+      ["New hire onboarding", "HR + Manager", 1, 1, 1], ["Contract ending in 30 days", "HR", 1, 0, 0],
+      ["Birthday & work anniversary", "Team", 0, 1, 1], ["Payroll cut-off reminder", "HR + Finance", 1, 0, 0],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td class="muted">${r[1]}</td><td>${sw(r[2])}</td><td>${sw(r[3])}</td><td>${sw(r[4])}</td></tr>`).join("");
+    return `
+      <div class="card"><div class="card__head"><div><div class="card__title">Notification Events</div><div class="card__sub">Choose channels per event</div></div></div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Event</th><th>Recipients</th><th style="text-align:left">Email</th><th>In-app</th><th>Slack</th></tr></thead><tbody>${events}</tbody></table></div></div></div>
+      <div class="card"><div class="card__head"><div class="card__title">Digest &amp; Delivery</div></div><div class="card__body" style="padding-top:4px">
+        ${setRow("Weekly people-metrics digest", "Sent to HR every Monday 08:00", sw(true))}
+        ${setRow("Quiet hours", "No notifications 20:00–07:00", sw(true))}
+        ${setRow("Default channel", "", '<span class="pill pill--gray">Email + In-app</span>')}
+      </div></div>`;
+  },
+
+  // ---- Integrations ----
+  adminIntegrations() {
+    const intg = [
+      ["Payroll (Emace)", "Payroll sync", "Connected", "#0ea5e9", "P", "Nightly · last 02:00"],
+      ["Microsoft Azure AD", "SSO / SCIM", "Connected", "#2563eb", "AD", "Real-time"],
+      ["Slack", "Notifications", "Connected", "#611f69", "S", "Real-time"],
+      ["Google Calendar", "Leave & OOO", "Connected", "#16a34a", "G", "2-way sync"],
+      ["Power BI", "Analytics export", "Connected", "#f59e0b", "BI", "Daily 06:00"],
+      ["Greenhouse", "Recruitment (ATS)", "Available", "#14b8a6", "GH", "—"],
+      ["LMS (Learning)", "Training records", "Available", "#8b5cf6", "L", "—"],
+    ].map((r) => `<div class="intg">
+        <div class="intg__logo" style="background:${r[3]}">${r[4]}</div>
+        <div style="flex:1;min-width:0"><div class="intg__name">${r[0]}</div><div class="intg__meta">${r[1]}${r[5] !== "—" ? " · " + r[5] : ""}</div></div>
+        ${r[2] === "Connected" ? pill("Connected", "green") : pill("Available", "gray")}
+        <button class="btn btn--ghost btn--sm" data-action="toast-demo">${r[2] === "Connected" ? "Manage" : "Connect"}</button>
+      </div>`).join("");
+    return `
+      <div class="grid grid-2" style="gap:14px">${intg}</div>
+      <div class="card" style="margin-top:16px"><div class="card__head"><div class="card__title">API &amp; Webhooks</div><span class="pill pill--green"><span class="dot"></span>Enabled</span></div><div class="card__body" style="padding-top:4px">
+        ${setRow("API key", "For custom integrations", '<code style="font-size:12px;background:var(--surface-2);padding:4px 8px;border-radius:6px;border:1px solid var(--border)">thr_live_••••••••3f9a</code>')}
+        ${setRow("Webhook endpoint", "Events pushed on change", '<span class="muted" style="font-size:12.5px">https://hooks.taruhr.com/v1/events</span>')}
+        ${setRow("Rate limit", "", '<span class="pill pill--gray">600 req / min</span>')}
+      </div></div>`;
+  },
+
+  // ---- Data Management ----
+  adminData() {
+    const retention = [
+      ["Employee records", "10 years after exit", "Statutory (FI)"], ["Payroll & tax", "6 years", "Bookkeeping Act"],
+      ["Job applications", "12 months", "Consent / GDPR"], ["Timesheets", "6 years", "Working Hours Act"],
+      ["Audit logs", "2 years", "Internal policy"], ["Analytics (aggregated)", "Indefinite", "Anonymised"],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td><td class="muted">${r[2]}</td></tr>`).join("");
+    const fields = [
+      ["Emergency contact", "Text", "All", "Yes"], ["T-shirt size", "Select", "All", "No"],
+      ["Bike benefit plan", "Select", "All", "No"], ["Security clearance", "Select", "Engineering", "No"],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td class="muted">${r[1]}</td><td class="muted">${r[2]}</td><td>${r[3] === "Yes" ? pill("Required", "amber") : '<span class="muted">Optional</span>'}</td></tr>`).join("");
+    return `
+      <div class="card"><div class="card__head"><div class="card__title">Import &amp; Export</div></div><div class="card__body">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn--ghost" data-action="toast-demo">${icon("download", 16)} Import employees (CSV)</button>
+          <button class="btn btn--ghost" data-action="export">${icon("download", 16)} Export all data</button>
+          <button class="btn btn--ghost" data-action="toast-demo">${icon("doc", 16)} Download template</button>
+        </div>
+        <p class="text-2 mt-16" style="font-size:12.5px">Bulk operations are validated and previewed before commit. Exports are logged in the audit trail.</p>
+      </div></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div><div class="card__title">Data Retention</div><div class="card__sub">GDPR-aligned policies</div></div></div><div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Data type</th><th>Retention</th><th>Basis</th></tr></thead><tbody>${retention}</tbody></table></div></div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Custom Fields</div><button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("plus", 15)} Add field</button></div><div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Field</th><th>Type</th><th>Applies to</th><th>Required</th></tr></thead><tbody>${fields}</tbody></table></div></div></div>
+      </div>`;
+  },
+
+  // ---- Localization ----
+  adminLocalization() {
+    const langs = [["English", "Default"], ["Suomi (Finnish)", ""], ["Svenska (Swedish)", ""], ["Deutsch (German)", ""]]
+      .map((l) => `<span class="pill ${l[1] ? "pill--brand" : "pill--gray"}">${l[0]}${l[1] ? " · " + l[1] : ""}</span>`).join(" ");
+    const opt = (v) => `<span class="pill pill--gray">${v}</span>`;
+    return `
+      <div class="card"><div class="card__head"><div class="card__title">Regional Settings</div></div><div class="card__body" style="padding-top:4px">
+        ${setRow("Default language", "Fallback for new users", opt("English"))}
+        ${setRow("Date format", "", opt("DD.MM.YYYY"))}
+        ${setRow("Time format", "", opt("24-hour"))}
+        ${setRow("Number format", "", opt("1 234,56"))}
+        ${setRow("Default currency", "", opt("EUR (€)"))}
+        ${setRow("First day of week", "", opt("Monday"))}
+        ${setRow("Default timezone", "", opt("Europe/Helsinki (EET)"))}
+      </div></div>
+      <div class="card"><div class="card__head"><div class="card__title">Supported Languages</div><button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("plus", 15)} Add language</button></div><div class="card__body"><div style="display:flex;flex-wrap:wrap;gap:8px">${langs}</div><p class="text-2 mt-16" style="font-size:12.5px">Employees choose their own language; payslips and policies localise to entity country.</p></div></div>`;
+  },
+
+  // ---- AI Configuration ----
+  adminAI() {
+    return `
+      <div class="banner"><span class="banner__icon tint-violet">${icon("assistant", 18)}</span><div>AI features run on your permission-scoped HR data. Governance controls keep decisions human-owned and data private.</div></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div class="card__title">AI Features</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("HR Assistant", "Natural-language Q&A over HR data", sw(true))}
+          ${setRow("Smart suggestions", "Surface relevant actions", sw(true))}
+          ${setRow("Anomaly detection", "Flag attendance & attrition risks", sw(true))}
+          ${setRow("Draft assistance", "Help write HR comms & policies", sw(true))}
+          ${setRow("Auto-summarise reviews", "Summarise performance feedback", sw(false))}
+        </div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Model &amp; Data</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Model", "Language model provider", '<span class="pill pill--violet">Claude (Anthropic)</span>')}
+          ${setRow("Data access", "Scope of data the AI can read", '<span class="pill pill--gray">Role-scoped</span>')}
+          ${setRow("PII redaction", "Mask identifiers in prompts", sw(true))}
+          ${setRow("EU data residency", "Process within the EU", sw(true))}
+          ${setRow("Response logging", "For audit & quality", sw(true))}
+        </div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><div class="card__head"><div class="card__title">Governance</div></div><div class="card__body" style="padding-top:4px">
+        ${setRow("Human-in-the-loop", "People decisions require human approval", sw(true))}
+        ${setRow("Employee opt-out", "Let employees exclude their data", sw(true))}
+        ${setRow("Training on your data", "Your data is never used to train models", sw(false))}
+      </div></div>`;
   },
 };

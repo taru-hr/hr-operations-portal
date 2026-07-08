@@ -12,7 +12,7 @@ const ROUTES = {
   approvals: { label: "Approvals",       sub: "Pending your review",             icon: "approvals", count: () => DB.approvals.length },
   reports:   { label: "Reports",         sub: "People analytics",                icon: "reports" },
   assistant: { label: "AI Assistant",    sub: "Ask your HR data",                icon: "assistant" },
-  settings:  { label: "Settings",        sub: "Configure the portal",            icon: "settings" },
+  admin:     { label: "System Administration", navLabel: "System Admin", sub: "Platform configuration", icon: "settings" },
 };
 
 const App = {
@@ -142,7 +142,21 @@ const App = {
         "toggle-benefit": () => this.toggleBenefit(el.dataset.id),
         "edit-comp": () => this.openEditComp(),
         "report-tab": () => { Pages.reportTab = el.dataset.tab; this.swapTabs(el); document.getElementById("reportBody").innerHTML = Pages.reportBody(); },
-        "settings-tab": () => { Pages.settingsTab = el.dataset.tab; this.swapTabs(el); document.getElementById("settingsBody").innerHTML = Pages.settingsBody(); },
+        "admin-section": () => {
+          Pages.adminSection = el.dataset.section;
+          document.querySelectorAll(".admin-nav-item").forEach((n) => n.classList.toggle("active", n.dataset.section === el.dataset.section));
+          document.getElementById("adminContent").innerHTML = Pages.adminContent(el.dataset.section);
+        },
+        "toggle-demo": () => el.classList.toggle("on"),
+        "set-env": () => {
+          if (Pages.adminEnv === el.dataset.env) return;
+          Pages.adminEnv = el.dataset.env;
+          this.renderRoute("admin");
+          const sandbox = el.dataset.env === "Sandbox";
+          this.toast(`Switched to ${el.dataset.env}`,
+            sandbox ? "Test environment — configuration changes are safe here." : "Back in the live environment — changes take effect for real.",
+            sandbox ? "info" : "success");
+        },
         "leave-tab": () => { Pages.leaveTab = el.dataset.tab; this.swapTabs(el); document.getElementById("leaveBody").innerHTML = Pages.leaveRows(); },
         "appr-filter": () => { Pages.approvalFilter = el.dataset.kind; this.swapChips(el); document.getElementById("approvalList").innerHTML = Pages.approvalItems(); },
         "attn-filter": () => { Pages.attendanceFilter = el.dataset.status; this.swapChips(el); document.getElementById("attnBody").innerHTML = Pages.attendanceRows(); },
