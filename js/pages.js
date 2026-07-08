@@ -449,13 +449,14 @@ const Pages = {
 
   // Personal "stamping in" page — your clock + your timesheet only.
   time() {
-    const ts = DB.timesheet.map((t) => `
+    const ts = DB.timesheet.map((t, i) => `
       <tr>
         <td><strong>${t.day}</strong> <span class="muted">${H.fmtDateShort(t.date)}</span></td>
         <td class="muted">${t.in}</td><td class="muted">${t.out}</td>
         <td class="muted">${t.break} h</td>
         <td><strong>${t.hours != null ? t.hours + " h" : "—"}</strong></td>
         <td>${t.status === "—" ? '<span class="muted">—</span>' : leaveStatusPill(t.status)}</td>
+        <td style="text-align:right"><button class="btn btn--ghost btn--sm" data-action="edit-stamp" data-i="${i}">${icon("edit", 14)} Edit</button></td>
       </tr>`).join("");
 
     const prof = H.wtimeProfileInfo(DB.currentUser.id);
@@ -507,12 +508,12 @@ const Pages = {
       </div>
 
       <div class="card">
-        <div class="card__head"><div><div class="card__title">My Timesheet</div><div class="card__sub">Week 28 · ${H.fmtDateShort(DB.timesheet[0].date)} – ${H.fmtDateShort(DB.timesheet[4].date)}</div></div><span class="text-2" style="font-size:13px">${weekTotal} h logged</span></div>
+        <div class="card__head"><div><div class="card__title">My Timesheet</div><div class="card__sub">Week 28 · missing a clock-in? Use <strong>Edit</strong> to correct a day</div></div><span class="text-2" style="font-size:13px">${weekTotal} h logged</span></div>
         <div class="card__body card__body--flush">
           <div class="table-wrap"><table class="tbl">
-            <thead><tr><th>Day</th><th>Clock In</th><th>Clock Out</th><th>Break</th><th>Hours</th><th>Status</th></tr></thead>
+            <thead><tr><th>Day</th><th>Clock In</th><th>Clock Out</th><th>Break</th><th>Hours</th><th>Status</th><th></th></tr></thead>
             <tbody>${ts}</tbody>
-            <tfoot><tr><td colspan="4" style="text-align:right;font-weight:600;padding:13px 20px">Week total</td><td style="font-weight:800">${weekTotal} h</td><td></td></tr></tfoot>
+            <tfoot><tr><td colspan="4" style="text-align:right;font-weight:600;padding:13px 20px">Week total</td><td style="font-weight:800">${weekTotal} h</td><td></td><td></td></tr></tfoot>
           </table></div>
         </div>
       </div>

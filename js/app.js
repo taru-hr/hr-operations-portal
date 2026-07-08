@@ -145,6 +145,7 @@ const App = {
         reject: () => this.decide(el.dataset.id, "Rejected"),
         "clock-toggle": () => this.toggleClock(),
         "set-mode": () => this.setMode(el.dataset.mode),
+        "edit-stamp": () => this.openEditStamp(+el.dataset.i),
         "toggle-benefit": () => this.toggleBenefit(el.dataset.id),
         "edit-comp": () => this.openEditComp(),
         "report-tab": () => { Pages.reportTab = el.dataset.tab; this.swapTabs(el); document.getElementById("reportBody").innerHTML = Pages.reportBody(); },
@@ -192,6 +193,7 @@ const App = {
     if (!appr && !lr) return;
     DB.approvals = DB.approvals.filter((a) => a.id !== id);
     if (lr) lr.status = decision;
+    if (appr && appr._tsIndex != null && DB.timesheet[appr._tsIndex]) DB.timesheet[appr._tsIndex].status = decision; // timesheet correction
     this.renderRoute(this.route); // refresh whichever page triggered it (Leave or Approvals)
     this.updateNavCounts();
     const empId = appr ? appr.empId : lr.empId;
@@ -227,6 +229,53 @@ const App = {
     this.applyMyAttendance();
     this.renderRoute("time");
     this.toast("Work mode updated", `You're now marked as ${mode === "Remote" ? "working remotely 🏠" : "working from the office 🏢"} (demo).`, "success");
+  },
+
+  computeHours(inStr, outStr, breakH) {
+    if (!inStr || !outStr || inStr === "—" || outStr === "—") return null;
+    const [ih, im] = inStr.split(":").map(Number);
+    const [oh, om] = outStr.split(":").map(Number);
+    let mins = (oh * 60 + om) - (ih * 60 + im);
+    if (mins < 0) mins += 24 * 60;
+    return Math.round((mins / 60 - (breakH || 0)) * 10) / 10;
+  },
+
+  // Correct a timesheet day (e.g. you forgot to clock in). Logged & sent for approval.
+  openEditStamp(i) {
+    const t = DB.timesheet[i];
+    if (!t) return;
+    const v = (x) => (x && x !== "—" ? x : "");
+    const body = `<form id="stampForm">
+      <p class="text-2" style="font-size:12.5px;margin-bottom:14px">Correcting <strong>${t.day} · ${H.fmtDate(t.date)}</strong></p>
+      <div class="form-row">
+        <div class="field"><label>Clock in</label><input class="input" type="time" name="tin" value="${v(t.in)}" /></div>
+        <div class="field"><label>Clock out</label><input class="input" type="time" name="tout" value="${v(t.out)}" /></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Break (hours)</label><input class="input" type="number" step="0.25" min="0" name="brk" value="${t.break}" /></div>
+        <div class="field"><label>Reason</label><select class="select" name="reason"><option>Forgot to clock in</option><option>Forgot to clock out</option><option>Wrong time recorded</option><option>Worked offsite</option><option>Other</option></select></div>
+      </div>
+      <p class="text-3" style="font-size:12px">Manual corrections are logged and sent to your manager for approval.</p>
+    </form>`;
+    const footer = `<button class="btn btn--ghost" data-action="close-modal">Cancel</button>
+      <button class="btn btn--primary" id="stampSubmit">${icon("check", 16)} Save correction</button>`;
+    this.openModal("Edit Time Entry", body, footer);
+    document.getElementById("stampSubmit").addEventListener("click", () => {
+      const f = document.getElementById("stampForm");
+      if (!f.tin.value && !f.tout.value) { this.toast("Nothing to save", "Enter at least a clock-in time.", "err"); return; }
+      t.in = f.tin.value || "—";
+      t.out = f.tout.value || "—";
+      t.break = parseFloat(f.brk.value) || 0;
+      t.hours = this.computeHours(t.in, t.out, t.break);
+      t.status = "Pending";
+      const cid = "TS-COR-" + i;
+      DB.approvals = DB.approvals.filter((a) => a.id !== cid);
+      DB.approvals.unshift({ id: cid, kind: "Timesheet", empId: DB.currentUser.id, title: `Timesheet correction — ${t.day}`, detail: `${t.in}–${t.out} · ${f.reason.value}`, submitted: DB.today, priority: "normal", _tsIndex: i });
+      this.closeModal();
+      this.updateNavCounts();
+      if (this.route === "time") this.renderRoute("time");
+      this.toast("Correction saved", `${t.day} updated — sent to your manager for approval (demo).`, "success");
+    });
   },
 
   /* ---------- Compensation & Benefits ---------- */
