@@ -41,6 +41,7 @@ const Icons = {
   database: `<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>`,
   history: `<path d="M3 4v5h5"/><path d="M3.5 9a9 9 0 1 1-1 4"/><path d="M12 8v4l3 2"/>`,
   dollar: `<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
+  payroll: `<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>`,
   laptop: `<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/>`,
   doc: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>`,
   send: `<path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/>`,
@@ -619,6 +620,131 @@ const Pages = {
         <td class="muted">${a.mode}</td>
       </tr>`;
     }).join("");
+  },
+
+  // Payroll run ("palkka-ajo") — transfer approved hours & leave to payroll for the current period.
+  payrollCard() {
+    const p = H.payPeriod();
+    const pr = DB.payroll;
+    const emps = DB.employees.length;
+    const pending = DB.approvals.length;
+    const ready = pending === 0;
+    const status = ready
+      ? `<span class="pill pill--green">${icon("check", 13)} All time &amp; leave approved</span>`
+      : `<span class="pill pill--amber">${icon("alert", 13)} ${pending} item${pending === 1 ? "" : "s"} pending approval</span>`;
+    const last = pr.lastRun
+      ? `Last run ${H.fmtDate(pr.lastRun)} · <strong>${pr.lastRef}</strong> by ${pr.lastBy}`
+      : "Not yet run for this period";
+    const btn = pr.lastRun
+      ? `<button class="btn btn--ghost" data-action="run-payroll">${icon("check", 16)} Transferred · re-run</button>`
+      : `<button class="btn btn--primary" data-action="run-payroll">${icon("send", 16)} Transfer to payroll</button>`;
+    return `
+      <div class="card payroll-card section-gap">
+        <div class="payroll-card__main">
+          <div class="payroll-card__icon">${icon("wallet", 22)}</div>
+          <div class="payroll-card__info">
+            <div class="payroll-card__title">Payroll run · ${p.label}</div>
+            <div class="payroll-card__meta">${emps} employees · ${H.fmtDateShort(p.start)}–${H.fmtDateShort(p.end)} · pay date ${H.fmtDate(p.payDate)}</div>
+            <div class="payroll-card__foot">${status}<span class="muted">${last}</span></div>
+          </div>
+        </div>
+        <div class="payroll-card__action">
+          ${btn}
+          <div class="payroll-card__hint">Exports approved hours &amp; leave to payroll</div>
+        </div>
+      </div>`;
+  },
+
+  // Dedicated Payroll page ("palkka-ajo"): preview the batch, then transfer to payroll.
+  payroll() {
+    const b = H.payrollBatch();
+    const p = b.period, t = b.totals, eur = H.eur;
+    const pending = DB.approvals.length;
+
+    const stats = `
+      <div class="grid grid-4 section-gap">
+        ${statCard({ icon: "users",   tint: "tint-brand", label: "Employees in run", value: t.count, foot: p.label })}
+        ${statCard({ icon: "payroll", tint: "tint-green", label: "Gross to transfer", value: eur(t.gross), foot: "Total earnings" })}
+        ${statCard({ icon: "clock",   tint: "tint-blue",  label: "Regular hours", value: t.attendHours + " h", foot: `+ ${t.otHours} h overtime` })}
+        ${statCard({ icon: "alert",   tint: pending ? "tint-amber" : "tint-green", label: "Pending approval", value: pending, foot: pending ? "Resolve before running" : "All clear" })}
+      </div>`;
+
+    // Earning types (palkkalajit) — what the gross is made of
+    const maxEarn = Math.max(...b.earn.map((e) => e.amount), 1);
+    const earnRows = b.earn.map((e) => `
+      <div class="earn-row">
+        <div class="earn-row__label"><strong>${e.label}</strong><span class="muted">${e.sub}</span></div>
+        <div class="earn-row__bar"><span style="width:${Math.round((e.amount / maxEarn) * 100)}%"></span></div>
+        <div class="earn-row__amt">${eur(e.amount)}</div>
+      </div>`).join("");
+    const earnCard = `
+      <div class="card col-span-2">
+        <div class="card__head"><div><div class="card__title">Earning types</div><div class="card__sub">What makes up the batch · palkkalajit</div></div><span class="pill pill--gray">${b.earn.length} types</span></div>
+        <div class="card__body">${earnRows}
+          <div class="earn-total"><span>Gross total</span><strong>${eur(t.gross)}</strong></div>
+        </div>
+      </div>`;
+
+    const formatCard = `
+      <div class="card">
+        <div class="card__head"><div class="card__title">Export &amp; format</div></div>
+        <div class="card__body">
+          ${setRow("Format", "Batch file for your provider", pill("SEPA + CSV", "blue"))}
+          ${setRow("Destination", "Downstream payroll system", pill("Palkka.fi", "gray"))}
+          ${setRow("Includes", "Approved data only", pill("Approved-only", "green"))}
+          ${setRow("Pay date", "Net pay reaches accounts", `<strong>${H.fmtDate(p.payDate)}</strong>`)}
+          <button class="btn btn--ghost" style="width:100%;justify-content:center;margin-top:14px" data-action="export">${icon("download", 16)} Export batch (CSV)</button>
+        </div>
+      </div>`;
+
+    // Batch preview — the actual per-employee pay data that would transfer
+    const rows = b.lines.map((l) => {
+      const ot = l.otHours ? (l.toil ? `${l.otHours} h <span class="pill pill--gray" style="font-size:10px">TOIL</span>` : `${l.otHours} h`) : `<span class="muted">—</span>`;
+      const leave = l.leaveDays ? `${l.leaveDays} d` : `<span class="muted">—</span>`;
+      const extra = l.holiday ? `<div class="cu-sub">incl. ${eur(l.holiday)} lomaraha</div>` : (l.incentive ? `<div class="cu-sub">incl. ${eur(l.incentive)} incentive</div>` : "");
+      return `<tr>
+        <td><div class="cell-user">${avatar(l.emp, "avatar--sm")}<div><div class="cu-name">${H.fullName(l.emp)}</div><div class="cu-sub">${l.emp.id}</div></div></div></td>
+        <td>${pill(l.prof.label, l.prof.tone)}</td>
+        <td class="muted">${l.prof.weekly} h/wk · ${l.fte}%</td>
+        <td class="muted">${l.attendHours} h</td>
+        <td class="muted">${ot}</td>
+        <td class="muted">${leave}</td>
+        <td style="text-align:right"><strong>${eur(l.gross)}</strong>${extra}</td>
+      </tr>`;
+    }).join("");
+    const tableCard = `
+      <div class="card">
+        <div class="card__head" style="flex-wrap:wrap;gap:12px">
+          <div><div class="card__title">Batch preview · ${p.label}</div><div class="card__sub">${t.count} employees · sample of the pay data that will transfer</div></div>
+          <span class="pill pill--gray">Gross ${eur(t.gross)}</span>
+        </div>
+        <div class="card__body card__body--flush">
+          <div class="table-wrap"><table class="tbl tbl--total">
+            <thead><tr><th>Employee</th><th>Agreement (TES)</th><th>Contract</th><th>Reg. hrs</th><th>Overtime</th><th>Leave</th><th style="text-align:right">Gross</th></tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot><tr>
+              <td colspan="3"><strong>Totals · ${t.count} employees</strong></td>
+              <td><strong>${t.attendHours} h</strong></td>
+              <td><strong>${t.otHours} h</strong></td>
+              <td><strong>${t.leaveDays} d</strong></td>
+              <td style="text-align:right"><strong>${eur(t.gross)}</strong></td>
+            </tr></tfoot>
+          </table></div>
+        </div>
+      </div>`;
+
+    return `
+      <div class="page-head">
+        <div><h2>Payroll Run</h2><p>Prepare &amp; transfer pay data to payroll · ${p.label}</p></div>
+        <div class="page-actions"><span class="pill pill--proto">● Demo — no real transfer</span></div>
+      </div>
+      ${Pages.payrollCard()}
+      ${stats}
+      <div class="grid grid-3 section-gap">
+        ${earnCard}
+        ${formatCard}
+      </div>
+      ${tableCard}`;
   },
 
   /* ---------------- LEAVE MANAGEMENT ---------------- */

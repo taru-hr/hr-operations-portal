@@ -11,6 +11,7 @@ const ROUTES = {
   comp:      { label: "Compensation & Benefits", navLabel: "Compensation", sub: "Salary, benefits & pay history", icon: "wallet" },
   approvals: { label: "Approvals",       sub: "Pending your review",             icon: "approvals", count: () => DB.approvals.length },
   reports:   { label: "Reports",         sub: "People analytics",                icon: "reports" },
+  payroll:   { label: "Payroll Run",     sub: "Prepare & transfer pay data",     icon: "payroll" },
   assistant: { label: "AI Assistant",    sub: "Ask your HR data",                icon: "assistant" },
   admin:     { label: "System Administration", navLabel: "System Admin", sub: "Platform configuration", icon: "settings" },
 };
@@ -146,6 +147,7 @@ const App = {
         "clock-toggle": () => this.toggleClock(),
         "set-mode": () => this.setMode(el.dataset.mode),
         "edit-stamp": () => this.openEditStamp(+el.dataset.i),
+        "run-payroll": () => this.openRunPayroll(),
         "toggle-benefit": () => this.toggleBenefit(el.dataset.id),
         "edit-comp": () => this.openEditComp(),
         "report-tab": () => { Pages.reportTab = el.dataset.tab; this.swapTabs(el); document.getElementById("reportBody").innerHTML = Pages.reportBody(); },
@@ -275,6 +277,41 @@ const App = {
       this.updateNavCounts();
       if (this.route === "time") this.renderRoute("time");
       this.toast("Correction saved", `${t.day} updated — sent to your manager for approval (demo).`, "success");
+    });
+  },
+
+  /* ---------- Payroll run ("palkka-ajo") — hand off approved pay data to payroll ---------- */
+  openRunPayroll() {
+    const p = H.payPeriod();
+    const [y, m] = DB.today.split("-").map(Number);
+    const ref = `PR-${y}-${String(m).padStart(2, "0")}`;
+    const emps = DB.employees.length;
+    const overlaps = (l) => l.from <= p.end && l.to >= p.start;
+    const leaveEvents = DB.leaveRequests.filter((l) => l.status === "Approved" && overlaps(l)).length;
+    const pending = DB.approvals.length;
+    const row = (label, val) => `<div class="pr-row"><span>${label}</span><strong>${val}</strong></div>`;
+    const notice = pending > 0
+      ? `<div class="pr-notice pr-notice--warn">${icon("alert", 15)} ${pending} item${pending === 1 ? "" : "s"} still pending approval — resolve in Approvals first; they won't be included in this run.</div>`
+      : `<div class="pr-notice pr-notice--ok">${icon("check", 15)} All time &amp; leave for this period is approved.</div>`;
+    const body = `
+      <p class="text-2" style="font-size:12.5px;margin-bottom:14px">Transfer approved pay data to payroll for <strong>${p.label}</strong>.</p>
+      <div class="pr-summary">
+        ${row("Pay period", `${H.fmtDateShort(p.start)} – ${H.fmtDate(p.end)}`)}
+        ${row("Employees in run", emps)}
+        ${row("Approved leave events", leaveEvents)}
+        ${row("Pay date", H.fmtDate(p.payDate))}
+        ${row("Batch reference", ref)}
+      </div>
+      ${notice}
+      <p class="text-3" style="font-size:12px;margin-top:12px">Portfolio demo — this generates the batch locally; no data leaves the app.</p>`;
+    const footer = `<button class="btn btn--ghost" data-action="close-modal">Cancel</button>
+      <button class="btn btn--primary" id="prSubmit">${icon("send", 16)} Transfer to payroll</button>`;
+    this.openModal("Run payroll", body, footer);
+    document.getElementById("prSubmit").addEventListener("click", () => {
+      DB.payroll = { lastRun: DB.today, lastRef: ref, lastBy: DB.currentUser.name, runs: (DB.payroll.runs || 0) + 1 };
+      this.closeModal();
+      if (this.route === "payroll" || this.route === "attendance") this.renderRoute(this.route);
+      this.toast("Pay data transferred to payroll", `${p.label} · batch ${ref} · ${emps} employees (demo).`, "success");
     });
   },
 

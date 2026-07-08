@@ -9,6 +9,9 @@ const DB = {
   // Pinned reference date so the snapshot stays coherent whenever it's opened.
   today: "2026-07-08", // Wednesday
 
+  // Payroll run ("palkka-ajo") — pay-data handoff to payroll. Populated after a run (in-session, demo).
+  payroll: { lastRun: null, lastRef: null, lastBy: null, runs: 0 },
+
   company: {
     name: "TaruHR",
     legal: "TaruHR",
@@ -277,6 +280,15 @@ const H = {
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     return `${d} ${months[m - 1]}`;
   },
+  // Current payroll period ("palkka-ajo") derived from today's month: full month, pay date = last day.
+  payPeriod() {
+    const full = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const [y, m] = DB.today.split("-").map(Number);
+    const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    const dim = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+    const p2 = (n) => String(n).padStart(2, "0");
+    return { label: `${full[m - 1]} ${y}`, start: `${y}-${p2(m)}-01`, end: `${y}-${p2(m)}-${p2(dim)}`, payDate: `${y}-${p2(m)}-${p2(dim)}` };
+  },
   tenureYears(iso) {
     const [y, m] = iso.split("-").map(Number);
     const [ty, tm] = DB.today.split("-").map(Number);
@@ -368,6 +380,49 @@ const H = {
     const c = { workers: 0, salaried: 0, senior: 0 };
     DB.employees.forEach((e) => { c[H.wtimeProfileFor(e.id)]++; });
     return c;
+  },
+
+  eur(n) { return "€" + Math.round(n).toLocaleString("en-US"); },
+
+  // Payroll batch ("palkka-ajo") — a deterministic sample of the pay data that would be
+  // exported to payroll for the current period, derived from salary, TES profile & approved leave.
+  payrollBatch() {
+    const p = H.payPeriod();
+    const workDays = 22; // approx business days in the period
+    const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
+    const inPeriod = (l) => l.status === "Approved" && l.from <= p.end && l.to >= p.start;
+    const lines = DB.employees.map((e) => {
+      const prof = H.wtimeProfileInfo(e.id);
+      const comp = H.compFor(e.id).compensation;
+      const fte = comp.fte;
+      const daily = prof.weekly / 5;
+      const base = Math.round(comp.salaryMonthly * fte / 100);
+      let leaveDays = 0, annualDays = 0;
+      DB.leaveRequests.forEach((l) => {
+        if (l.empId !== e.id || !inPeriod(l)) return;
+        leaveDays += l.days;
+        if (l.type === "Annual Leave") annualDays += l.days;
+      });
+      const attendHours = Math.max(0, Math.round((workDays * daily) * fte / 100 - leaveDays * daily));
+      const h = hash(e.id);
+      const otHours = h % 4 === 0 ? (h % 5) + 1 : 0;
+      const toil = otHours > 0 && prof.key === "senior"; // senior salaried: time off in lieu, not paid overtime
+      const otPay = otHours && !toil ? Math.round((base / (workDays * daily)) * 1.5 * otHours) : 0;
+      const incentive = e.dept === "sal" ? 400 + (h % 6) * 120 : 0;
+      // Holiday bonus (lomaraha), paid in the July run to those on accrued annual leave
+      const holiday = annualDays > 0 && e.join < "2026-01-01" ? Math.round((base / workDays) * annualDays * 0.5) : 0;
+      const gross = base + otPay + incentive + holiday;
+      return { empId: e.id, emp: e, prof, fte, base, attendHours, otHours, toil, otPay, incentive, leaveDays, annualDays, holiday, gross };
+    });
+    const sum = (f) => lines.reduce((s, l) => s + f(l), 0);
+    const earn = [
+      { label: "Base salary",     sub: "Kuukausipalkka", amount: sum((l) => l.base) },
+      { label: "Overtime 50%",    sub: "Ylityö",         amount: sum((l) => l.otPay) },
+      { label: "Sales incentive", sub: "Provisio",       amount: sum((l) => l.incentive) },
+      { label: "Holiday bonus",   sub: "Lomaraha",       amount: sum((l) => l.holiday) },
+    ].filter((x) => x.amount > 0);
+    const totals = { count: lines.length, attendHours: sum((l) => l.attendHours), otHours: sum((l) => l.otHours), leaveDays: sum((l) => l.leaveDays), gross: sum((l) => l.gross) };
+    return { period: p, lines, earn, totals };
   },
 };
 
