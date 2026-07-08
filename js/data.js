@@ -74,14 +74,25 @@ const DB = {
     { id: "LV-1039", empId: "EMP-008", type: "Parental Leave",  from: "2026-09-01", to: "2026-11-24", days: 60, status: "Approved", reason: "Parental leave",                   submitted: "2026-05-30" },
     { id: "LV-1030", empId: "EMP-013", type: "Annual Leave",    from: "2026-06-30", to: "2026-07-01", days: 2,  status: "Rejected", reason: "Overlaps onboarding week",         submitted: "2026-06-20" },
     { id: "LV-1055", empId: "EMP-005", type: "Annual Leave",    from: "2026-07-28", to: "2026-07-31", days: 4,  status: "Pending",  reason: "Long weekend",                     submitted: "2026-07-08" },
+
+    // Current user's (Taru, EMP-001) own leave — approved days sum to the used balances below
+    { id: "LV-1001", empId: "EMP-001", type: "Annual Leave",    from: "2026-02-17", to: "2026-02-21", days: 5,  status: "Approved", reason: "Winter holiday",                   submitted: "2026-01-20" },
+    { id: "LV-1002", empId: "EMP-001", type: "Annual Leave",    from: "2026-04-27", to: "2026-04-29", days: 3,  status: "Approved", reason: "Spring long weekend",              submitted: "2026-04-06" },
+    { id: "LV-1003", empId: "EMP-001", type: "Sick Leave",      from: "2026-03-04", to: "2026-03-06", days: 3,  status: "Approved", reason: "Flu recovery",                     submitted: "2026-03-04" },
+    { id: "LV-1004", empId: "EMP-001", type: "Personal Leave",  from: "2026-05-20", to: "2026-05-20", days: 1,  status: "Approved", reason: "Personal appointment",             submitted: "2026-05-11" },
+    { id: "LV-1005", empId: "EMP-001", type: "Annual Leave",    from: "2026-06-15", to: "2026-06-17", days: 3,  status: "Approved", reason: "Midsummer break",                  submitted: "2026-05-25" },
+    { id: "LV-1006", empId: "EMP-001", type: "Annual Leave",    from: "2026-08-10", to: "2026-08-14", days: 5,  status: "Pending",  reason: "Summer trip",                      submitted: "2026-07-07" },
+    { id: "LV-1007", empId: "EMP-001", type: "Sick Leave",      from: "2026-07-08", to: "2026-07-08", days: 1,  status: "Pending",  reason: "Doctor visit",                     submitted: "2026-07-08" },
   ],
 
   /* ---- Current user's leave balances (days) ---- */
+  // mode: "quota" = accruing entitlement you draw down (annual leave, TES ~30 days/yr);
+  //       "usage" = no fixed personal quota, just track days taken (sick/personal per TES).
   leaveBalances: [
-    { type: "Annual Leave",   entitled: 25, used: 11, pending: 0, color: "#4f46e5" },
-    { type: "Sick Leave",     entitled: 10, used: 3,  pending: 0, color: "#f59e0b" },
-    { type: "Personal Leave", entitled: 5,  used: 1,  pending: 0, color: "#14b8a6" },
-    { type: "Parental Leave", entitled: 0,  used: 0,  pending: 0, color: "#8b5cf6" },
+    { type: "Annual Leave",   entitled: 30, used: 11, pending: 0, color: "#4f46e5", mode: "quota" },
+    { type: "Sick Leave",     entitled: 10, used: 3,  pending: 0, color: "#f59e0b", mode: "usage" },
+    { type: "Personal Leave", entitled: 5,  used: 1,  pending: 0, color: "#14b8a6", mode: "usage" },
+    { type: "Parental Leave", entitled: 0,  used: 0,  pending: 0, color: "#8b5cf6", mode: "quota" },
   ],
 
   /* ---- Attendance snapshot for TODAY ---- */
@@ -126,6 +137,8 @@ const DB = {
     { id: "LV-1051", kind: "Leave",     empId: "EMP-012", title: "Annual Leave — 5 days",         detail: "20–24 Jul 2026 · Short trip",          submitted: "2026-07-07", priority: "normal" },
     { id: "LV-1053", kind: "Leave",     empId: "EMP-017", title: "Annual Leave — 10 days",        detail: "3–14 Aug 2026 · Obon holiday",         submitted: "2026-07-08", priority: "normal" },
     { id: "LV-1055", kind: "Leave",     empId: "EMP-005", title: "Annual Leave — 4 days",         detail: "28–31 Jul 2026 · Long weekend",        submitted: "2026-07-08", priority: "low" },
+    { id: "LV-1006", kind: "Leave",     empId: "EMP-001", title: "Annual Leave — 5 days",         detail: "10–14 Aug 2026 · Summer trip",         submitted: "2026-07-07", priority: "normal" },
+    { id: "LV-1007", kind: "Leave",     empId: "EMP-001", title: "Sick Leave — 1 day",            detail: "8 Jul 2026 · Doctor visit",            submitted: "2026-07-08", priority: "normal" },
     { id: "TS-3308", kind: "Timesheet", empId: "EMP-003", title: "Timesheet — Wk 27",             detail: "39.5 h logged · 1.5 h overtime",       submitted: "2026-07-07", priority: "normal" },
     { id: "EX-2210", kind: "Expense",   empId: "EMP-012", title: "Expense — €340 client dinner",  detail: "Sales · NY client visit · receipt ✓",  submitted: "2026-07-06", priority: "normal" },
     { id: "EQ-0091", kind: "Equipment", empId: "EMP-013", title: "Equipment — Laptop + monitor",  detail: "New hire onboarding · Sales",          submitted: "2026-07-06", priority: "high" },
@@ -318,6 +331,17 @@ const H = {
 
   pendingApprovals: () => DB.approvals,
   pendingLeaveCount: () => DB.leaveRequests.filter((l) => l.status === "Pending").length,
+
+  // Current user's leave balances — used/pending computed live from their requests
+  myLeaveBalances() {
+    const mine = DB.leaveRequests.filter((l) => l.empId === DB.currentUser.id);
+    return DB.leaveBalances.map((b) => {
+      const used = mine.filter((l) => l.type === b.type && l.status === "Approved").reduce((s, l) => s + l.days, 0);
+      const pending = mine.filter((l) => l.type === b.type && l.status === "Pending").reduce((s, l) => s + l.days, 0);
+      return { type: b.type, color: b.color, entitled: b.entitled, used, pending, mode: b.mode, remaining: b.entitled - used, available: b.entitled - used - pending };
+    });
+  },
+  myLeaveRequests: () => DB.leaveRequests.filter((l) => l.empId === DB.currentUser.id).slice().sort((a, b) => (a.submitted < b.submitted ? 1 : -1)),
 
   // Per-employee compensation record — generated lazily and cached so edits persist.
   // EMP-001 (Taru) keeps the hand-authored seed; everyone else is generated.

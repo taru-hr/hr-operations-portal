@@ -7,7 +7,7 @@ const ROUTES = {
   employees: { label: "Employees",       sub: "Directory & profiles",            icon: "employees" },
   time:      { label: "Time Clock",      sub: "Clock in/out & your timesheet",   icon: "time" },
   attendance:{ label: "Attendance",      sub: "Team attendance overview",         icon: "userCheck" },
-  leave:     { label: "Leave Management", sub: "Balances & requests",            icon: "leave", count: () => H.pendingLeaveCount() },
+  leave:     { label: "Leave Management", sub: "Team leave records",              icon: "leave", count: () => H.pendingLeaveCount() },
   comp:      { label: "Compensation & Benefits", navLabel: "Compensation", sub: "Salary, benefits & pay history", icon: "wallet" },
   approvals: { label: "Approvals",       sub: "Pending your review",             icon: "approvals", count: () => DB.approvals.length },
   reports:   { label: "Reports",         sub: "People analytics",                icon: "reports" },
@@ -359,7 +359,7 @@ const App = {
       DB.approvals.unshift({ id, kind: "Leave", empId: DB.currentUser.id, title: `${f.type.value} — ${days} day${days > 1 ? "s" : ""}`, detail: `${H.fmtDateShort(from)}–${H.fmtDateShort(to)} · ${f.reason.value || "No reason given"}`, submitted: DB.today, priority: "normal" });
       this.closeModal();
       this.updateNavCounts();
-      if (this.route === "leave") this.renderRoute("leave");
+      if (this.route === "leave" || this.route === "time") this.renderRoute(this.route);
       this.toast("Request submitted", `${days} day(s) of ${f.type.value} sent for approval (demo).`, "success");
     });
   },

@@ -35,7 +35,7 @@ analytics and an AI assistant.
 |---|---|
 | 🏠 **Dashboard** | KPI cards, headcount growth, attendance snapshot, activity feed & upcoming people-ops events |
 | 👥 **Employees** | Searchable/filterable directory with employee profiles & org details |
-| ⏰ **Time Clock** | Your personal clock in/out (Office / Remote), weekly timesheet, work-time stats & self-service **Request Leave** |
+| ⏰ **Time Clock** | Your personal clock in/out (Office / Remote), weekly timesheet, work-time stats, **leave balances** (annual days-left vs. sick/personal days-used per TES), **request tracking** (approved/pending) & self-service **Request Leave** |
 | 🗓️ **Attendance** | Team-wide attendance — today's log (filterable by status), KPIs & weekly trend |
 | 🌴 **Leave Management** | HR/Manager view — view & edit leave records, add leave for any employee, balances (approvals live in **Approvals**) |
 | 💶 **Compensation & Benefits** | Per-employee salary, grade/band & compa-ratio, benefits enrolment, pay & benefits history — opened from any employee's profile — plus a live **role-based access (RBAC)** demo |

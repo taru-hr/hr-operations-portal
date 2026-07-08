@@ -115,6 +115,54 @@ function card(title, sub, body, headExtra = "") {
   </div>`;
 }
 
+// Leave-balance card. Two modes:
+//   "usage" (sick/personal) — no fixed quota, just show days used this year.
+//   "quota" (annual)        — accruing entitlement; show days left (after pending) + used/entitled.
+function balanceCard(b) {
+  const pendingNote = b.pending ? ` · <span style="color:var(--amber);font-weight:600">${b.pending} pending</span>` : "";
+
+  if (b.mode === "usage") {
+    return `<div class="card"><div class="card__body">
+      <div class="balance">
+        <div class="chart-donut" style="width:84px;height:84px;position:relative;display:grid;place-items:center">
+          <svg viewBox="0 0 84 84" width="84" height="84"><circle cx="42" cy="42" r="34" fill="none" stroke="${b.color}" stroke-width="9" opacity="0.18"/></svg>
+          <div style="position:absolute;text-align:center">
+            <div style="font-size:26px;font-weight:800;line-height:1;color:${b.color}">${b.used}</div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:2px">used</div>
+          </div>
+        </div>
+        <div class="bal-info">
+          <div class="bal-type">${b.type}</div>
+          <div class="bal-detail"><strong>${b.used}</strong> day${b.used === 1 ? "" : "s"} used this year${pendingNote}</div>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  // quota mode (annual leave; parental shows "no entitlement" when 0)
+  if (!b.entitled) {
+    return `<div class="card"><div class="card__body">
+      <div class="balance">
+        <div class="chart-donut">${Charts.donut([{ label: "None", value: 1, color: "var(--border-2)" }], { size: 84, thickness: 12, centerValue: "—", centerLabel: "" })}</div>
+        <div class="bal-info"><div class="bal-type">${b.type}</div><div class="bal-detail">No standing entitlement</div></div>
+      </div>
+    </div></div>`;
+  }
+  return `<div class="card"><div class="card__body">
+    <div class="balance">
+      <div class="chart-donut">${Charts.donut([
+        { label: "Used", value: b.used, color: b.color },
+        { label: "Pending", value: b.pending, color: b.color + "66" },
+        { label: "Available", value: Math.max(b.available, 0), color: "var(--border-2)" },
+      ], { size: 84, thickness: 12, centerValue: b.available, centerLabel: "left" })}</div>
+      <div class="bal-info">
+        <div class="bal-type">${b.type}</div>
+        <div class="bal-detail"><strong>${b.available} days left</strong>${pendingNote}</div>
+      </div>
+    </div>
+  </div></div>`;
+}
+
 /* ============================================================
    PAGES
    ============================================================ */
@@ -390,6 +438,20 @@ const Pages = {
     const avgStart = `${String(Math.floor(avgMin / 60)).padStart(2, "0")}:${String(avgMin % 60).padStart(2, "0")}`;
     const remaining = Math.max(0, DB.company.workweekHours - weekNum).toFixed(1);
 
+    // Personal leave: balances + request tracking
+    const balanceCards = H.myLeaveBalances().map((b) => balanceCard(b)).join("");
+    const myReqs = H.myLeaveRequests();
+    const myPending = myReqs.filter((l) => l.status === "Pending").length;
+    const reqRows = myReqs.length
+      ? myReqs.map((l) => `<tr>
+          <td>${l.type}</td>
+          <td class="muted nowrap">${H.fmtDateShort(l.from)} – ${H.fmtDateShort(l.to)}</td>
+          <td><strong>${l.days}</strong></td>
+          <td class="muted nowrap">${H.fmtDateShort(l.submitted)}</td>
+          <td>${leaveStatusPill(l.status)}</td>
+        </tr>`).join("")
+      : `<tr><td colspan="5"><div class="empty">${icon("leave", 42)}<div>No leave requests yet — use <strong>Request Leave</strong> to submit one.</div></div></td></tr>`;
+
     return `
       <div class="page-head">
         <div><h2>Time Clock</h2><p>Clock in/out &amp; your timesheet · ${H.fmtDate(DB.today)}</p></div>
@@ -418,6 +480,26 @@ const Pages = {
             <thead><tr><th>Day</th><th>Clock In</th><th>Clock Out</th><th>Break</th><th>Hours</th><th>Status</th></tr></thead>
             <tbody>${ts}</tbody>
             <tfoot><tr><td colspan="4" style="text-align:right;font-weight:600;padding:13px 20px">Week total</td><td style="font-weight:800">${weekTotal} h</td><td></td></tr></tfoot>
+          </table></div>
+        </div>
+      </div>
+
+      <div style="margin:24px 0 14px">
+        <h3 style="font-size:16px;font-weight:700;letter-spacing:-.2px">My Leave</h3>
+        <p class="text-2" style="font-size:12.5px">Your balances &amp; the status of your requests</p>
+      </div>
+
+      <div class="grid grid-4 section-gap">${balanceCards}</div>
+
+      <div class="card">
+        <div class="card__head">
+          <div><div class="card__title">My Leave Requests</div><div class="card__sub">Track whether your time-off was approved</div></div>
+          ${myPending ? pill(myPending + " pending", "amber") : pill("All up to date", "green")}
+        </div>
+        <div class="card__body card__body--flush">
+          <div class="table-wrap"><table class="tbl">
+            <thead><tr><th>Type</th><th>Dates</th><th>Days</th><th>Submitted</th><th>Status</th></tr></thead>
+            <tbody>${reqRows}</tbody>
           </table></div>
         </div>
       </div>`;
@@ -507,20 +589,11 @@ const Pages = {
 
   /* ---------------- LEAVE MANAGEMENT ---------------- */
   leave() {
-    const balances = DB.leaveBalances.map((b) => {
-      const remaining = b.entitled - b.used;
-      const pct = b.entitled ? (b.used / b.entitled) * 100 : 0;
-      return `<div class="card"><div class="card__body">
-        <div class="balance">
-          <div class="chart-donut">${Charts.donut([{ label: "Used", value: b.used, color: b.color }, { label: "Left", value: Math.max(b.entitled - b.used, 0), color: "var(--border-2)" }], { size: 84, thickness: 12, centerValue: b.entitled ? remaining : "—", centerLabel: "left" })}</div>
-          <div class="bal-info">
-            <div class="bal-type">${b.type}</div>
-            <div class="bal-detail">${b.used} used · ${b.entitled} entitled</div>
-            <div class="progress mt-8"><span style="width:${pct}%;background:${b.color}"></span></div>
-          </div>
-        </div>
-      </div></div>`;
-    }).join("");
+    const spansToday = (l) => l.from <= DB.today && l.to >= DB.today;
+    const onLeaveToday = DB.leaveRequests.filter((l) => l.status === "Approved" && spansToday(l)).length;
+    const pending = DB.leaveRequests.filter((l) => l.status === "Pending").length;
+    const approved = DB.leaveRequests.filter((l) => l.status === "Approved").length;
+    const rejected = DB.leaveRequests.filter((l) => l.status === "Rejected").length;
 
     const tabs = [["all", "All requests"], ["Pending", "Pending"], ["Approved", "Approved"], ["Rejected", "Rejected"]];
     const tabHtml = tabs.map(([id, label]) =>
@@ -532,7 +605,12 @@ const Pages = {
         <div class="page-actions"><button class="btn btn--primary" data-action="add-leave">${icon("plus", 17)} Add Leave</button></div>
       </div>
 
-      <div class="grid grid-4 section-gap">${balances}</div>
+      <div class="grid grid-4 section-gap">
+        ${statCard({ icon: "leave", tint: "tint-amber", label: "On Leave Today", value: onLeaveToday, foot: "Currently away" })}
+        ${statCard({ icon: "clock", tint: "tint-blue", label: "Pending Approval", value: pending, foot: "Awaiting decision" })}
+        ${statCard({ icon: "checkCircle", tint: "tint-green", label: "Approved Requests", value: approved, foot: "This year" })}
+        ${statCard({ icon: "x", tint: "tint-red", label: "Rejected", value: rejected, foot: "This year" })}
+      </div>
 
       <div class="card">
         <div class="card__head" style="flex-wrap:wrap;gap:12px">
@@ -772,8 +850,11 @@ const Pages = {
       return `We currently have <strong>${s.total} employees</strong> across ${DB.departments.length} departments.<ul>${dept.map((d) => `<li>${d.label}: ${d.value}</li>`).join("")}</ul>`;
     }
     if (has("my leave", "leave balance", "vacation day", "days off", "my balance", "holiday left", "annual leave left")) {
-      const a = DB.leaveBalances.find((b) => b.type === "Annual Leave");
-      return `You have <strong>${a.entitled - a.used} of ${a.entitled} annual leave days</strong> remaining (${a.used} used). Sick leave: ${DB.leaveBalances[1].entitled - DB.leaveBalances[1].used} days left. Personal: ${DB.leaveBalances[2].entitled - DB.leaveBalances[2].used} left.`;
+      const bal = H.myLeaveBalances();
+      const annual = bal.find((b) => b.type === "Annual Leave");
+      const sick = bal.find((b) => b.type === "Sick Leave");
+      const personal = bal.find((b) => b.type === "Personal Leave");
+      return `You have <strong>${annual.available} of ${annual.entitled} annual leave days</strong> available (${annual.used} used${annual.pending ? `, ${annual.pending} pending` : ""}). Sick leave used this year: <strong>${sick.used} day${sick.used === 1 ? "" : "s"}</strong>. Personal leave used: <strong>${personal.used} day${personal.used === 1 ? "" : "s"}</strong>. Sick & personal leave follow the collective agreement (TES).`;
     }
     if (has("pending", "approval", "to approve", "waiting")) {
       const list = DB.approvals.slice(0, 4);
@@ -1028,13 +1109,13 @@ const Pages = {
           <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Department</th><th>Lead</th><th>People</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
       }
       case "policy":
-        return card("Leave Policy", "Annual entitlements by leave type", `
+        return card("Leave Policy", "Entitlements by leave type (per collective agreement · TES)", `
           <div class="table-wrap"><table class="tbl">
-            <thead><tr><th>Leave type</th><th>Days / year</th><th>Accrual</th><th>Carryover</th></tr></thead>
+            <thead><tr><th>Leave type</th><th>Allowance / year</th><th>Accrual</th><th>Carryover</th></tr></thead>
             <tbody>
-              <tr><td><strong>Annual Leave</strong></td><td>25</td><td>Monthly</td><td>5 days</td></tr>
-              <tr><td><strong>Sick Leave</strong></td><td>10</td><td>Upfront</td><td>None</td></tr>
-              <tr><td><strong>Personal Leave</strong></td><td>5</td><td>Upfront</td><td>None</td></tr>
+              <tr><td><strong>Annual Leave</strong></td><td>30 days</td><td>Monthly (2.5 d/mo)</td><td>5 days</td></tr>
+              <tr><td><strong>Sick Leave</strong></td><td>Per TES</td><td>As incurred</td><td>—</td></tr>
+              <tr><td><strong>Personal Leave</strong></td><td>Per TES</td><td>As incurred</td><td>—</td></tr>
               <tr><td><strong>Parental Leave</strong></td><td>Statutory</td><td>—</td><td>—</td></tr>
             </tbody>
           </table></div>
