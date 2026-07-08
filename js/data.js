@@ -354,7 +354,35 @@ const H = {
     }
     return DB._comp[empId];
   },
+
+  // Working-time profile per employee — which collective agreement (TES) governs them.
+  // Derived from the role, cached, and overridable by HR.
+  wtimeProfileFor(empId) {
+    DB._wtime = DB._wtime || {};
+    if (!DB._wtime[empId]) DB._wtime[empId] = classifyWtime(H.emp(empId));
+    return DB._wtime[empId];
+  },
+  setWtimeProfile(empId, key) { DB._wtime = DB._wtime || {}; DB._wtime[empId] = key; },
+  wtimeProfileInfo(empId) { return WTIME_PROFILES[H.wtimeProfileFor(empId)]; },
+  wtimeCounts() {
+    const c = { workers: 0, salaried: 0, senior: 0 };
+    DB.employees.forEach((e) => { c[H.wtimeProfileFor(e.id)]++; });
+    return c;
+  },
 };
+
+// Working-time profiles: map employee populations to their collective agreement.
+const WTIME_PROFILES = {
+  workers:  { key: "workers",  label: "Workers",         agreement: "Teknologiateollisuuden työntekijät", applies: "Production, assembly & maintenance", weekly: 40,   reduction: "pekkas leave",       tone: "gray" },
+  salaried: { key: "salaried", label: "Salaried",        agreement: "Toimihenkilöt",                      applies: "Office, technical & professional",  weekly: 37.5, reduction: "flexitime",          tone: "blue" },
+  senior:   { key: "senior",   label: "Senior salaried", agreement: "Ylemmät toimihenkilöt",              applies: "Experts, specialists & managers",   weekly: 37.5, reduction: "flexitime / autonomy", tone: "violet" },
+};
+// Default classification from the job title (software company → mostly senior salaried / salaried, no workers)
+function classifyWtime(emp) {
+  const t = emp.title.toLowerCase();
+  if (/coord|assistant|\bsdr\b|development rep|support|content|clerk|receptionist|associate|account executive/.test(t)) return "salaried";
+  return "senior";
+}
 
 /* ============================================================
    Compensation generator — deterministic, realistic records

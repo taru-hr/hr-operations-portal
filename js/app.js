@@ -135,6 +135,12 @@ const App = {
         "edit-leave": () => this.openEditLeave(el.dataset.id),
         "open-profile": () => this.openProfile(el.dataset.id),
         "view-comp": () => this.openComp(el.dataset.id),
+        "set-wtime-profile": () => {
+          H.setWtimeProfile(el.dataset.id, el.dataset.profile);
+          this.openProfile(el.dataset.id);
+          const info = H.wtimeProfileInfo(el.dataset.id);
+          this.toast("Profile updated", `${H.fullName(H.emp(el.dataset.id))} → ${info.label} (${info.agreement}).`, "success");
+        },
         approve: () => this.decide(el.dataset.id, "Approved"),
         reject: () => this.decide(el.dataset.id, "Rejected"),
         "clock-toggle": () => this.toggleClock(),
@@ -148,6 +154,7 @@ const App = {
           document.getElementById("adminContent").innerHTML = Pages.adminContent(el.dataset.section);
         },
         "toggle-demo": () => el.classList.toggle("on"),
+        "wtime-profile": () => { Pages.wtimeProfile = el.dataset.profile; document.getElementById("adminContent").innerHTML = Pages.adminContent("wtime"); },
         "set-env": () => {
           if (Pages.adminEnv === el.dataset.env) return;
           Pages.adminEnv = el.dataset.env;

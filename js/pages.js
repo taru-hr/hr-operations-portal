@@ -400,7 +400,21 @@ const Pages = {
         <a class="btn btn--ghost btn--sm" href="mailto:${e.email}">${icon("mail", 16)} Email</a>
         <button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("edit", 16)} Edit profile</button>
       </div>
-      <div class="profile-meta">${meta}</div>`;
+      <div class="profile-meta">${meta}</div>
+      ${Pages.wtimeProfileBlock(e)}`;
+  },
+
+  // Working-time profile (collective agreement) block for the employee profile modal
+  wtimeProfileBlock(e) {
+    const cur = H.wtimeProfileFor(e.id);
+    const info = WTIME_PROFILES[cur];
+    const chips = Object.values(WTIME_PROFILES).map((p) =>
+      `<button class="chip ${p.key === cur ? "active" : ""}" data-action="set-wtime-profile" data-id="${e.id}" data-profile="${p.key}">${p.label}</button>`).join("");
+    return `<div style="margin-top:18px;border-top:1px solid var(--border-2);padding-top:16px">
+      <div class="mi-label">Working-time profile · collective agreement</div>
+      <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-top:8px">${chips}</div>
+      <div class="text-2 mt-8" style="font-size:12px">${info.agreement} · ${info.weekly} h/week · ${info.reduction}</div>
+    </div>`;
   },
 
   /* ---------------- TIME TRACKING ---------------- */
@@ -444,15 +458,18 @@ const Pages = {
         <td>${t.status === "—" ? '<span class="muted">—</span>' : leaveStatusPill(t.status)}</td>
       </tr>`).join("");
 
+    const prof = H.wtimeProfileInfo(DB.currentUser.id);
+    const weeklyTarget = prof.weekly;
+    const dailyTarget = +(weeklyTarget / 5).toFixed(1);
     const weekNum = DB.timesheet.reduce((s, t) => s + (t.hours || 0), 0);
     const weekTotal = weekNum.toFixed(1);
     const done = DB.timesheet.filter((t) => t.hours != null);
     const daysLogged = DB.timesheet.filter((t) => t.in !== "—").length;
-    const overtime = weekNum - 7.5 * done.length;
+    const overtime = weekNum - dailyTarget * done.length;
     const ins = DB.timesheet.filter((t) => t.in !== "—").map((t) => { const [h, m] = t.in.split(":").map(Number); return h * 60 + m; });
     const avgMin = ins.length ? Math.round(ins.reduce((a, b) => a + b, 0) / ins.length) : 0;
     const avgStart = `${String(Math.floor(avgMin / 60)).padStart(2, "0")}:${String(avgMin % 60).padStart(2, "0")}`;
-    const remaining = Math.max(0, DB.company.workweekHours - weekNum).toFixed(1);
+    const remaining = Math.max(0, weeklyTarget - weekNum).toFixed(1);
 
     // Personal leave: balances + request tracking
     const balanceCards = H.myLeaveBalances().map((b) => balanceCard(b)).join("");
@@ -470,7 +487,7 @@ const Pages = {
 
     return `
       <div class="page-head">
-        <div><h2>Time Clock</h2><p>Clock in/out &amp; your timesheet · ${H.fmtDate(DB.today)}</p></div>
+        <div><div class="flex items-center gap-8"><h2>Time Clock</h2>${pill(prof.label + " · " + prof.reduction, prof.tone)}</div><p>Clock in/out &amp; your timesheet · ${H.fmtDate(DB.today)}</p></div>
         <div class="page-actions">
           <button class="btn btn--ghost" data-action="export">${icon("download", 17)} Export timesheet</button>
           <button class="btn btn--primary" data-action="request-leave">${icon("leave", 17)} Request Leave</button>
@@ -479,13 +496,13 @@ const Pages = {
 
       <div class="grid grid-3 section-gap">
         ${Pages.clockWidget()}
-        ${statCard({ icon: "clock", tint: "tint-brand", label: "Logged This Week", value: weekTotal + " h", foot: `Target ${DB.company.workweekHours} h/week` })}
+        ${statCard({ icon: "clock", tint: "tint-brand", label: "Logged This Week", value: weekTotal + " h", foot: `Target ${weeklyTarget} h/week` })}
       </div>
 
       <div class="grid grid-4 section-gap">
         ${statCard({ icon: "checkCircle", tint: "tint-green", label: "Days Present", value: daysLogged + " / 5", foot: "This week" })}
         ${statCard({ icon: "time", tint: "tint-blue", label: "Avg Start Time", value: avgStart, foot: "On-time" })}
-        ${statCard({ icon: "trendUp", tint: "tint-violet", label: "Overtime", value: (overtime >= 0 ? "+" : "") + overtime.toFixed(1) + " h", foot: "Vs. 7.5 h/day" })}
+        ${statCard({ icon: "trendUp", tint: "tint-violet", label: "Overtime", value: (overtime >= 0 ? "+" : "") + overtime.toFixed(1) + " h", foot: `Vs. ${dailyTarget} h/day` })}
         ${statCard({ icon: "coffee", tint: "tint-amber", label: "Remaining to Target", value: remaining + " h", foot: "This week" })}
       </div>
 
@@ -1171,30 +1188,140 @@ const Pages = {
       </div>`;
   },
 
-  // ---- Working Time Rules ----
+  // ---- Working Time Rules (per collective agreement / employee population) ----
+  wtimeProfile: "salaried",
   adminWorkingTime() {
-    const schedules = [
-      ["Standard full-time", "37.5", "Mon–Fri", "10:00–15:00", "±2h"],
-      ["Part-time 80%", "30.0", "Mon–Thu", "10:00–15:00", "±2h"],
-      ["Customer Success (shift)", "37.5", "Rotating", "—", "Fixed"],
-    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td>${r[1]} h</td><td class="muted">${r[2]}</td><td class="muted">${r[3]}</td><td class="muted">${r[4]}</td></tr>`).join("");
+    const profiles = [["workers", "Workers", "40 h"], ["salaried", "Salaried", "37.5 h"], ["senior", "Senior salaried", "Flexible"]];
+    const counts = H.wtimeCounts();
+    const chips = profiles.map(([k, l, s]) => `<button class="chip ${Pages.wtimeProfile === k ? "active" : ""}" data-action="wtime-profile" data-profile="${k}">${l} · ${s}/wk <span style="opacity:.6;font-weight:700">${counts[k]}</span></button>`).join("");
+    const cp = WTIME_PROFILES[Pages.wtimeProfile];
+    const mapped = DB.employees.filter((e) => H.wtimeProfileFor(e.id) === Pages.wtimeProfile);
+    const examples = mapped.slice(0, 6).map((em) => `<span class="pill pill--gray">${H.fullName(em)}</span>`).join(" ");
     const holidays = [
       ["1 Jan", "New Year's Day"], ["6 Jan", "Epiphany"], ["3 Apr", "Good Friday"], ["6 Apr", "Easter Monday"],
       ["1 May", "May Day (Vappu)"], ["14 May", "Ascension Day"], ["19 Jun", "Midsummer Eve"], ["6 Dec", "Independence Day"],
       ["24–26 Dec", "Christmas"],
     ].map((r) => `<div class="list-row"><span class="dot-icon tint-teal">${icon("calendar", 16)}</span><div><div class="lr-title">${r[1]}</div></div><span class="lr-time">${r[0]}</span></div>`).join("");
+    const body = ({ workers: Pages.wtimeWorkers, salaried: Pages.wtimeSalaried, senior: Pages.wtimeSenior }[Pages.wtimeProfile])();
     return `
-      <div class="card"><div class="card__head"><div class="card__title">Work Schedules</div><button class="btn btn--ghost btn--sm" data-action="toast-demo">${icon("plus", 15)} New schedule</button></div>
-        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Schedule</th><th>Hours / week</th><th>Working days</th><th>Core hours</th><th>Flextime</th></tr></thead><tbody>${schedules}</tbody></table></div></div></div>
+      <div class="card section-gap"><div class="card__body" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div><div class="card__title" style="font-size:14px">Working-time profile</div><div class="card__sub">Rules apply per collective agreement (TES) &amp; employee population</div></div>
+        <div class="filterbar" style="margin:0;margin-left:auto">${chips}</div>
+      </div></div>
+      <div class="card section-gap"><div class="card__head"><div><div class="card__title">Employee mapping</div><div class="card__sub">Each employee is assigned a profile on their record; counts update the rules that apply to them</div></div></div>
+        <div class="card__body">
+          <div class="text-2" style="font-size:12.5px">On <strong>${cp.label}</strong> (${cp.agreement}) — <strong>${mapped.length}</strong> employee${mapped.length === 1 ? "" : "s"}:</div>
+          <div class="flex items-center gap-8 mt-8" style="flex-wrap:wrap">${examples || '<span class="muted">No employees on this agreement (a software company has no production staff) — held for future use</span>'}${mapped.length > 6 ? ` <span class="muted" style="font-size:12px">+${mapped.length - 6} more</span>` : ""}</div>
+        </div></div>
+      ${body}
+      <div class="card"><div class="card__head"><div class="card__title">Public Holidays 2026</div><span class="text-2" style="font-size:12.5px">Finland · weekday holidays shorten weekly hours</span></div><div class="card__body"><div class="list">${holidays}</div></div></div>`;
+  },
+
+  wtimeWorkers() {
+    const otCell = (v, note) => `${pill(v, v === "+100%" ? "red" : "amber")}${note ? ` <span class="muted" style="font-size:11px">${note}</span>` : ""}`;
+    const forms = [
+      ["Day work", "8 h", "40 h", "Averaging leave", "—"],
+      ["Two-shift work", "8 h", "40 h", "Averaging leave", "Evening bonus"],
+      ["Three-shift, continuous", "8 h", "≈ 34.9 h avg", "Continuous cycle", "Evening + night"],
+      ["Part-time", "≤ 8 h", "Pro-rata", "By contract", "As applicable"],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td><td>${r[2]}</td><td class="muted">${r[3]}</td><td class="muted">${r[4]}</td></tr>`).join("");
+    const ot = [
+      ["Daily overtime", "&gt; 8 h / day", ["+50%", "first 2 h"], ["+100%", "thereafter"]],
+      ["Weekly overtime", "&gt; 40 h / week", ["+50%", "first 8 h"], ["+100%", "thereafter"]],
+      ["Eve of Sunday / public holiday", "Overtime hours", ["+100%", ""], ["+100%", ""]],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td class="muted">${r[1]}</td><td>${otCell(r[2][0], r[2][1])}</td><td>${otCell(r[3][0], r[3][1])}</td></tr>`).join("");
+    return `
+      <div class="banner"><span class="banner__icon tint-brand">${icon("doc", 18)}</span><div><strong>Technology Industries — Workers (TES 2025–2027).</strong> Applies to production, assembly &amp; maintenance staff. Regular time <strong>8 h/day · 40 h/week</strong>, averaged via working-time reduction (pekkas) leave.</div></div>
+      <div class="card"><div class="card__head"><div><div class="card__title">Regular Working Time</div><div class="card__sub">By working-time form · § 19</div></div>${pill("40 h / week", "gray")}</div>
+        <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Working-time form</th><th>Daily</th><th>Weekly (max)</th><th>Averaging</th><th>Shift bonus</th></tr></thead><tbody>${forms}</tbody></table></div></div></div>
       <div class="grid grid-2">
-        <div class="card"><div class="card__head"><div class="card__title">Overtime &amp; Breaks</div></div><div class="card__body" style="padding-top:4px">
-          ${setRow("Overtime threshold", "Hours before overtime applies", '<span class="pill pill--gray">37.5 h / week</span>')}
-          ${setRow("Overtime rate", "Weekday / Sunday", '<span class="pill pill--gray">150% / 200%</span>')}
-          ${setRow("Daily rest", "Minimum between shifts", '<span class="pill pill--gray">11 hours</span>')}
-          ${setRow("Break", "Unpaid break after 6 h", '<span class="pill pill--gray">30 min</span>')}
+        <div class="card"><div class="card__head"><div><div class="card__title">Overtime</div><div class="card__sub">§ 20 · on top of base / incentive pay</div></div></div>
+          <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Type</th><th>Threshold</th><th>First tier</th><th>After</th></tr></thead><tbody>${ot}</tbody></table></div></div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Sunday, Holidays &amp; Rest</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Sunday &amp; public holiday work", "§ 20.8 · on top of pay + overtime", pill("+100%", "red"))}
+          ${setRow("Easter Sat · Midsummer Eve · Christmas Eve", "§ 20.9", pill("+100%", "red"))}
+          ${setRow("Daily rest", "Statutory minimum between shifts", '<span class="pill pill--gray">11 hours</span>')}
+          ${setRow("Weekly rest", "§ 20.10 · uninterrupted", '<span class="pill pill--gray">35 hours</span>')}
+          ${setRow("Lost weekly rest", "Monetary compensation", pill("+100%", "red"))}
+        </div></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div class="card__title">Shift &amp; Standby Bonuses</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Evening shift bonus", "Vuorolisä", '<span class="pill pill--gray">per TES rate table</span>')}
+          ${setRow("Night shift bonus", "Vuorolisä", '<span class="pill pill--gray">per TES rate table</span>')}
+          ${setRow("Standby — on call", "§ 20.12 · restricted", pill("+50%", "amber"))}
+          ${setRow("Standby — reachable", "§ 20.12", pill("+35%", "amber"))}
+        </div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Averaging, Bank &amp; Limits</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Working-time averaging", "Balance 40 h/week over the period", '<span class="pill pill--gray">up to 12 months</span>')}
+          ${setRow("Working time bank", "Save / borrow hours (§ 19.8)", sw(true))}
+          ${setRow("Maximum working time", "Avg incl. overtime over 4 months", '<span class="pill pill--gray">48 h / week</span>')}
           ${setRow("Auto clock-out", "Force clock-out if forgotten", sw(true))}
         </div></div>
-        <div class="card"><div class="card__head"><div class="card__title">Public Holidays 2026</div><span class="text-2" style="font-size:12.5px">Finland</span></div><div class="card__body"><div class="list">${holidays}</div></div></div>
+      </div>`;
+  },
+
+  wtimeSalaried() {
+    const otCell = (v, note) => `${pill(v, v === "+100%" ? "red" : "amber")}${note ? ` <span class="muted" style="font-size:11px">${note}</span>` : ""}`;
+    const avg = [["2025", "36.0 h"], ["2026", "36.1 h"], ["2027", "36.3 h"]].map((r) => `<tr><td><strong>${r[0]}</strong></td><td>${r[1]} / week average</td><td class="muted">via reduction leave &amp; holidays</td></tr>`).join("");
+    const ot = [
+      ["Daily overtime", "&gt; 7.5 h / day", ["+50%", "first 2 h"], ["+100%", "thereafter"]],
+      ["Weekly overtime", "&gt; 37.5 h / week", ["+50%", "first 8 h"], ["+100%", "thereafter"]],
+    ].map((r) => `<tr><td><strong>${r[0]}</strong></td><td class="muted">${r[1]}</td><td>${otCell(r[2][0], r[2][1])}</td><td>${otCell(r[3][0], r[3][1])}</td></tr>`).join("");
+    return `
+      <div class="banner"><span class="banner__icon tint-blue">${icon("doc", 18)}</span><div><strong>Technology Industries — Salaried employees / toimihenkilöt (TES 2025–2027).</strong> Applies to office, technical &amp; professional staff. Regular time <strong>7.5 h/day · 37.5 h/week</strong>, mostly daytime with flexitime.</div></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div><div class="card__title">Regular Working Time</div><div class="card__sub">§ 6 · nominal &amp; averaged</div></div>${pill("37.5 h / week", "gray")}</div>
+          <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Year</th><th>Average weekly time</th><th>Basis</th></tr></thead><tbody>${avg}</tbody></table></div>
+          <div style="padding:14px 20px" class="text-2">Nominal 7.5 h/day. Actual annual average is lower — reduced by midweek holidays and working-time reduction leave.</div></div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Flexitime (liukuva työaika)</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Flexitime enabled", "Vary start / end within limits", sw(true))}
+          ${setRow("Daily flex range", "Around fixed hours", '<span class="pill pill--gray">± 3 h</span>')}
+          ${setRow("Core hours", "Must be present", '<span class="pill pill--gray">09:30–15:00</span>')}
+          ${setRow("Reference period", "Flexitime settlement", '<span class="pill pill--gray">6 months</span>')}
+          ${setRow("Max balance → bank", "Excess transfers to working time bank", '<span class="pill pill--gray">+40 h</span>')}
+        </div></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div class="card__title">Overtime</div></div>
+          <div class="card__body card__body--flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>Type</th><th>Threshold</th><th>First tier</th><th>After</th></tr></thead><tbody>${ot}</tbody></table></div></div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Sunday &amp; Rest</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Sunday &amp; public holiday work", "On top of pay + overtime", pill("+100%", "red"))}
+          ${setRow("Daily rest", "Statutory minimum", '<span class="pill pill--gray">11 hours</span>')}
+          ${setRow("Weekly rest", "Uninterrupted", '<span class="pill pill--gray">35 hours</span>')}
+          ${setRow("Working time bank", "Save / borrow hours", sw(true))}
+        </div></div>
+      </div>`;
+  },
+
+  wtimeSenior() {
+    return `
+      <div class="banner"><span class="banner__icon tint-violet">${icon("doc", 18)}</span><div><strong>Technology Industries — Senior salaried employees / ylemmät toimihenkilöt (TES 2025–2027).</strong> Applies to experts, specialists &amp; managers. Working time is largely <strong>autonomous</strong>.</div></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div><div class="card__title">Regular Working Time</div><div class="card__sub">§ 3 · agreed individually</div></div>${pill("≤ 40 h / week", "gray")}</div><div class="card__body" style="padding-top:4px">
+          ${setRow("Regular working time", "Set in the employment contract", '<span class="pill pill--gray">≤ 8 h/day · 40 h/week</span>')}
+          ${setRow("Statutory basis", "Within the Working Time Act", '<span class="pill pill--gray">Working Time Act</span>')}
+          ${setRow("Averaging period", "Hours average out over", '<span class="pill pill--gray">up to 12 months</span>')}
+          ${setRow("Maximum working time", "Reference period", '<span class="pill pill--gray">12 months</span>')}
+        </div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Working-time Autonomy</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Self-scheduling", "Employee determines working hours", sw(true))}
+          ${setRow("Flexible working hours", "Local derogation from Working Time Act", sw(true))}
+          ${setRow("Remote / location-independent", "", sw(true))}
+          ${setRow("Time tracking", "Autonomy over hours", '<span class="pill pill--gray">Light-touch</span>')}
+        </div></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card__head"><div><div class="card__title">Overtime &amp; Additional Work</div><div class="card__sub">§ 3 · not automatic percentages</div></div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Overtime compensation", "Governed by Working Time Act", pill("By separate agreement", "violet"))}
+          ${setRow("Common method", "Chosen per contract / locally", '<span class="pill pill--gray">Monthly supplement or time off in lieu</span>')}
+          ${setRow("Additional regular hours", "Employer-assigned, production reasons", '<span class="pill pill--gray">Capped per year</span>')}
+        </div></div>
+        <div class="card"><div class="card__head"><div class="card__title">Rest &amp; Bank</div></div><div class="card__body" style="padding-top:4px">
+          ${setRow("Daily rest", "Statutory minimum", '<span class="pill pill--gray">11 hours</span>')}
+          ${setRow("Weekly rest", "Uninterrupted", '<span class="pill pill--gray">35 hours</span>')}
+          ${setRow("Working time bank", "Save / borrow hours &amp; TOIL", sw(true))}
+        </div></div>
       </div>`;
   },
 
