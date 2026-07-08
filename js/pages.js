@@ -55,6 +55,7 @@ const Icons = {
   star: `<path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1L12 2Z"/>`,
   clock: `<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`,
   users: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>`,
+  userCheck: `<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 11l2 2 4-4"/>`,
   alert: `<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>`,
   chevronRight: `<path d="M9 6l6 6-6 6"/>`,
 };
@@ -368,19 +369,8 @@ const Pages = {
     </div>`;
   },
 
+  // Personal "stamping in" page — your clock + your timesheet only.
   time() {
-    const s = H.stats();
-    const rows = DB.attendance.map((a) => {
-      const e = H.emp(a.empId);
-      return `<tr>
-        <td><div class="cell-user">${avatar(e, "avatar--sm")}<div><div class="cu-name">${H.fullName(e)}</div><div class="cu-sub">${H.deptName(e.dept)}</div></div></div></td>
-        <td>${statusPill(a.status)}</td>
-        <td class="muted">${a.in}</td>
-        <td class="muted">${a.out}</td>
-        <td class="muted">${a.mode}</td>
-      </tr>`;
-    }).join("");
-
     const ts = DB.timesheet.map((t) => `
       <tr>
         <td><strong>${t.day}</strong> <span class="muted">${H.fmtDateShort(t.date)}</span></td>
@@ -389,33 +379,80 @@ const Pages = {
         <td><strong>${t.hours != null ? t.hours + " h" : "—"}</strong></td>
         <td>${t.status === "—" ? '<span class="muted">—</span>' : leaveStatusPill(t.status)}</td>
       </tr>`).join("");
-    const weekTotal = DB.timesheet.reduce((s, t) => s + (t.hours || 0), 0).toFixed(1);
 
+    const weekNum = DB.timesheet.reduce((s, t) => s + (t.hours || 0), 0);
+    const weekTotal = weekNum.toFixed(1);
+    const done = DB.timesheet.filter((t) => t.hours != null);
+    const daysLogged = DB.timesheet.filter((t) => t.in !== "—").length;
+    const overtime = weekNum - 7.5 * done.length;
+    const ins = DB.timesheet.filter((t) => t.in !== "—").map((t) => { const [h, m] = t.in.split(":").map(Number); return h * 60 + m; });
+    const avgMin = ins.length ? Math.round(ins.reduce((a, b) => a + b, 0) / ins.length) : 0;
+    const avgStart = `${String(Math.floor(avgMin / 60)).padStart(2, "0")}:${String(avgMin % 60).padStart(2, "0")}`;
+    const remaining = Math.max(0, DB.company.workweekHours - weekNum).toFixed(1);
+
+    return `
+      <div class="page-head">
+        <div><h2>Time Clock</h2><p>Clock in/out &amp; your timesheet · ${H.fmtDate(DB.today)}</p></div>
+        <div class="page-actions">
+          <button class="btn btn--ghost" data-action="export">${icon("download", 17)} Export timesheet</button>
+          <button class="btn btn--primary" data-action="request-leave">${icon("leave", 17)} Request Leave</button>
+        </div>
+      </div>
+
+      <div class="grid grid-3 section-gap">
+        ${Pages.clockWidget()}
+        ${statCard({ icon: "clock", tint: "tint-brand", label: "Logged This Week", value: weekTotal + " h", foot: `Target ${DB.company.workweekHours} h/week` })}
+      </div>
+
+      <div class="grid grid-4 section-gap">
+        ${statCard({ icon: "checkCircle", tint: "tint-green", label: "Days Present", value: daysLogged + " / 5", foot: "This week" })}
+        ${statCard({ icon: "time", tint: "tint-blue", label: "Avg Start Time", value: avgStart, foot: "On-time" })}
+        ${statCard({ icon: "trendUp", tint: "tint-violet", label: "Overtime", value: (overtime >= 0 ? "+" : "") + overtime.toFixed(1) + " h", foot: "Vs. 7.5 h/day" })}
+        ${statCard({ icon: "coffee", tint: "tint-amber", label: "Remaining to Target", value: remaining + " h", foot: "This week" })}
+      </div>
+
+      <div class="card">
+        <div class="card__head"><div><div class="card__title">My Timesheet</div><div class="card__sub">Week 28 · ${H.fmtDateShort(DB.timesheet[0].date)} – ${H.fmtDateShort(DB.timesheet[4].date)}</div></div><span class="text-2" style="font-size:13px">${weekTotal} h logged</span></div>
+        <div class="card__body card__body--flush">
+          <div class="table-wrap"><table class="tbl">
+            <thead><tr><th>Day</th><th>Clock In</th><th>Clock Out</th><th>Break</th><th>Hours</th><th>Status</th></tr></thead>
+            <tbody>${ts}</tbody>
+            <tfoot><tr><td colspan="4" style="text-align:right;font-weight:600;padding:13px 20px">Week total</td><td style="font-weight:800">${weekTotal} h</td><td></td></tr></tfoot>
+          </table></div>
+        </div>
+      </div>`;
+  },
+
+  /* ---------------- ATTENDANCE (all employees) ---------------- */
+  attendanceFilter: "all",
+  attendance() {
+    const s = H.stats();
+    const late = DB.attendance.filter((a) => a.status === "Late").length;
     const attnTrend = Charts.line({
       xLabels: DB.attendanceTrend.map((d) => d.d),
       series: [
         { name: "In office", color: "#10b981", points: DB.attendanceTrend.map((d) => d.present) },
         { name: "Remote", color: "#3b82f6", points: DB.attendanceTrend.map((d) => d.remote) },
       ],
-      height: 220, area: false,
+      height: 240, area: false,
     });
+    const statusData = H.byStatus();
+    const legend = statusData.map((d) => `<div class="legend-item"><span class="swatch" style="background:${d.color}"></span><span class="lg-label">${d.label}</span><span class="lg-val">${d.value}</span></div>`).join("");
+
+    const filters = [["all", "All"], ["Present", "In office"], ["Remote", "Remote"], ["On Leave", "On leave"], ["Late", "Late"], ["Absent", "Absent"]];
+    const chips = filters.map(([st, label]) => `<button class="chip ${Pages.attendanceFilter === st ? "active" : ""}" data-action="attn-filter" data-status="${st}">${label}</button>`).join("");
 
     return `
       <div class="page-head">
-        <div><h2>Time Tracking</h2><p>Attendance & timesheets · ${H.fmtDate(DB.today)}</p></div>
+        <div><h2>Attendance</h2><p>Team attendance overview · ${H.fmtDate(DB.today)}</p></div>
         <div class="page-actions"><button class="btn btn--ghost" data-action="export">${icon("download", 17)} Export</button></div>
       </div>
 
-      <div class="grid grid-3 section-gap">
-        ${Pages.clockWidget()}
-        ${statCard({ icon: "users", tint: "tint-green", label: "Present / Remote", value: s.atWork + " / " + s.total, foot: s.attendanceRate + "% attendance" })}
-      </div>
-
       <div class="grid grid-4 section-gap">
-        ${statCard({ icon: "checkCircle", tint: "tint-green", label: "In Office", value: s.present, foot: "Checked in today" })}
+        ${statCard({ icon: "checkCircle", tint: "tint-green", label: "In Office", value: s.present, foot: `${s.attendanceRate}% attendance rate` })}
         ${statCard({ icon: "globe", tint: "tint-blue", label: "Remote", value: s.remote, foot: "Working remotely" })}
         ${statCard({ icon: "leave", tint: "tint-amber", label: "On Leave", value: s.onLeave, foot: "Approved absence" })}
-        ${statCard({ icon: "alert", tint: "tint-pink", label: "Late / Absent", value: (s.absent + DB.attendance.filter(a=>a.status==='Late').length), foot: "Needs follow-up" })}
+        ${statCard({ icon: "alert", tint: "tint-pink", label: "Late / Absent", value: (s.absent + late), foot: "Needs follow-up" })}
       </div>
 
       <div class="grid grid-3 section-gap">
@@ -429,26 +466,43 @@ const Pages = {
           <div class="card__body"><div class="chart">${attnTrend}</div></div>
         </div>
         <div class="card">
-          <div class="card__head"><div class="card__title">My Timesheet</div><span class="text-2" style="font-size:13px">Wk 28</span></div>
-          <div class="card__body card__body--flush">
-            <div class="table-wrap"><table class="tbl">
-              <thead><tr><th>Day</th><th>In</th><th>Out</th><th>Break</th><th>Hours</th><th>Status</th></tr></thead>
-              <tbody>${ts}</tbody>
-              <tfoot><tr><td colspan="4" style="text-align:right;font-weight:600;padding:13px 20px">Week total</td><td style="font-weight:800">${weekTotal} h</td><td></td></tr></tfoot>
-            </table></div>
+          <div class="card__head"><div class="card__title">Who's In Today</div></div>
+          <div class="card__body">
+            <div class="chart-flex" style="justify-content:center"><div class="chart">${Charts.donut(statusData, { centerValue: s.attendanceRate + "%", centerLabel: "at work" })}</div></div>
+            <div class="legend mt-16">${legend}</div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card__head"><div class="card__title">Today's Attendance Log</div><span class="text-2" style="font-size:13px">${DB.attendance.length} employees</span></div>
+        <div class="card__head" style="flex-wrap:wrap;gap:12px">
+          <div><div class="card__title">Today's Attendance Log</div><div class="card__sub">${DB.attendance.length} employees · ${H.fmtDate(DB.today)}</div></div>
+          <div class="filterbar" style="margin:0">${chips}</div>
+        </div>
         <div class="card__body card__body--flush">
           <div class="table-wrap"><table class="tbl">
-            <thead><tr><th>Employee</th><th>Status</th><th>Clock In</th><th>Clock Out</th><th>Mode</th></tr></thead>
-            <tbody>${rows}</tbody>
+            <thead><tr><th>Employee</th><th>Department</th><th>Status</th><th>Clock In</th><th>Clock Out</th><th>Mode</th></tr></thead>
+            <tbody id="attnBody">${Pages.attendanceRows()}</tbody>
           </table></div>
         </div>
       </div>`;
+  },
+
+  attendanceRows() {
+    let list = DB.attendance.slice();
+    if (Pages.attendanceFilter !== "all") list = list.filter((a) => a.status === Pages.attendanceFilter);
+    if (!list.length) return `<tr><td colspan="6"><div class="empty">${icon("users", 42)}<div>No employees with this status.</div></div></td></tr>`;
+    return list.map((a) => {
+      const e = H.emp(a.empId);
+      return `<tr>
+        <td><div class="cell-user">${avatar(e, "avatar--sm")}<div><div class="cu-name">${H.fullName(e)}</div><div class="cu-sub">${e.id}</div></div></div></td>
+        <td><span class="pill pill--gray"><span class="dot" style="background:${H.deptColor(e.dept)}"></span>${H.deptName(e.dept)}</span></td>
+        <td>${statusPill(a.status)}</td>
+        <td class="muted">${a.in}</td>
+        <td class="muted">${a.out}</td>
+        <td class="muted">${a.mode}</td>
+      </tr>`;
+    }).join("");
   },
 
   /* ---------------- LEAVE MANAGEMENT ---------------- */
@@ -474,20 +528,20 @@ const Pages = {
 
     return `
       <div class="page-head">
-        <div><h2>Leave Management</h2><p>Balances, requests & team calendar</p></div>
-        <div class="page-actions"><button class="btn btn--primary" data-action="request-leave">${icon("plus", 17)} Request Leave</button></div>
+        <div><h2>Leave Management</h2><p>View, edit &amp; add leave for your team</p></div>
+        <div class="page-actions"><button class="btn btn--primary" data-action="add-leave">${icon("plus", 17)} Add Leave</button></div>
       </div>
 
       <div class="grid grid-4 section-gap">${balances}</div>
 
       <div class="card">
         <div class="card__head" style="flex-wrap:wrap;gap:12px">
-          <div><div class="card__title">Leave Requests</div><div class="card__sub">Your team's requests</div></div>
+          <div><div class="card__title">Leave Requests</div><div class="card__sub">Team leave records · approvals handled in Approvals</div></div>
           <div class="tabs">${tabHtml}</div>
         </div>
         <div class="card__body card__body--flush">
           <div class="table-wrap"><table class="tbl">
-            <thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th>Days</th><th>Reason</th><th>Status</th></tr></thead>
+            <thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th>Days</th><th>Reason</th><th>Status</th><th></th></tr></thead>
             <tbody id="leaveBody">${Pages.leaveRows()}</tbody>
           </table></div>
         </div>
@@ -497,9 +551,12 @@ const Pages = {
   leaveRows() {
     let list = DB.leaveRequests.slice().sort((a, b) => (a.submitted < b.submitted ? 1 : -1));
     if (Pages.leaveTab !== "all") list = list.filter((l) => l.status === Pages.leaveTab);
-    if (!list.length) return `<tr><td colspan="6"><div class="empty">${icon("leave", 42)}<div>No ${Pages.leaveTab.toLowerCase()} requests.</div></div></td></tr>`;
+    if (!list.length) return `<tr><td colspan="7"><div class="empty">${icon("leave", 42)}<div>No ${Pages.leaveTab.toLowerCase()} requests.</div></div></td></tr>`;
     return list.map((l) => {
       const e = H.emp(l.empId);
+      const action = `<div style="display:flex;justify-content:flex-end">
+        <button class="btn btn--ghost btn--sm" data-action="edit-leave" data-id="${l.id}">${icon("edit", 15)} Edit leave</button>
+      </div>`;
       return `<tr>
         <td><div class="cell-user">${avatar(e, "avatar--sm")}<div><div class="cu-name">${H.fullName(e)}</div><div class="cu-sub">${H.deptName(e.dept)}</div></div></div></td>
         <td>${l.type}</td>
@@ -507,6 +564,7 @@ const Pages = {
         <td><strong>${l.days}</strong></td>
         <td class="muted">${l.reason}</td>
         <td>${leaveStatusPill(l.status)}</td>
+        <td>${action}</td>
       </tr>`;
     }).join("");
   },

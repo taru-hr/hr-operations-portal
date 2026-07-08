@@ -5,7 +5,8 @@
 const ROUTES = {
   dashboard: { label: "Dashboard",       sub: "Your people operations overview", icon: "dashboard" },
   employees: { label: "Employees",       sub: "Directory & profiles",            icon: "employees" },
-  time:      { label: "Time Tracking",   sub: "Attendance & timesheets",         icon: "time" },
+  time:      { label: "Time Clock",      sub: "Clock in/out & your timesheet",   icon: "time" },
+  attendance:{ label: "Attendance",      sub: "Team attendance overview",         icon: "userCheck" },
   leave:     { label: "Leave Management", sub: "Balances & requests",            icon: "leave", count: () => H.pendingLeaveCount() },
   comp:      { label: "Compensation & Benefits", navLabel: "Compensation", sub: "Salary, benefits & pay history", icon: "wallet" },
   approvals: { label: "Approvals",       sub: "Pending your review",             icon: "approvals", count: () => DB.approvals.length },
@@ -130,6 +131,8 @@ const App = {
         export: () => this.toast("Export started", "Your report is being generated (demo).", "info"),
         "add-employee": () => this.openAddEmployee(),
         "request-leave": () => this.openRequestLeave(),
+        "add-leave": () => this.openAddLeave(),
+        "edit-leave": () => this.openEditLeave(el.dataset.id),
         "open-profile": () => this.openProfile(el.dataset.id),
         "view-comp": () => this.openComp(el.dataset.id),
         approve: () => this.decide(el.dataset.id, "Approved"),
@@ -142,6 +145,7 @@ const App = {
         "settings-tab": () => { Pages.settingsTab = el.dataset.tab; this.swapTabs(el); document.getElementById("settingsBody").innerHTML = Pages.settingsBody(); },
         "leave-tab": () => { Pages.leaveTab = el.dataset.tab; this.swapTabs(el); document.getElementById("leaveBody").innerHTML = Pages.leaveRows(); },
         "appr-filter": () => { Pages.approvalFilter = el.dataset.kind; this.swapChips(el); document.getElementById("approvalList").innerHTML = Pages.approvalItems(); },
+        "attn-filter": () => { Pages.attendanceFilter = el.dataset.status; this.swapChips(el); document.getElementById("attnBody").innerHTML = Pages.attendanceRows(); },
         "emp-dept": () => { Pages.empFilter.dept = el.dataset.dept; this.swapChips(el); document.getElementById("empBody").innerHTML = Pages.employeeRows(); },
         "set-theme": () => this.applyTheme(el.dataset.theme, true),
         "save-settings": () => this.toast("Saved", "Your changes have been saved (demo).", "success"),
@@ -160,17 +164,18 @@ const App = {
   swapTabs(el) { el.parentElement.querySelectorAll(".tab").forEach((t) => t.classList.remove("active")); el.classList.add("active"); },
   swapChips(el) { el.parentElement.querySelectorAll(".chip").forEach((c) => c.classList.remove("active")); el.classList.add("active"); },
 
-  /* ---------- Approvals ---------- */
+  /* ---------- Approve / reject (used by Approvals AND Leave Management) ---------- */
   decide(id, decision) {
-    const item = DB.approvals.find((a) => a.id === id);
-    if (!item) return;
-    DB.approvals = DB.approvals.filter((a) => a.id !== id);
+    const appr = DB.approvals.find((a) => a.id === id);
     const lr = DB.leaveRequests.find((l) => l.id === id);
+    if (!appr && !lr) return;
+    DB.approvals = DB.approvals.filter((a) => a.id !== id);
     if (lr) lr.status = decision;
-    this.renderRoute("approvals");
+    this.renderRoute(this.route); // refresh whichever page triggered it (Leave or Approvals)
     this.updateNavCounts();
-    const who = H.fullName(H.emp(item.empId));
-    this.toast(`${decision}`, `${item.title} for ${who}.`, decision === "Approved" ? "success" : "err");
+    const empId = appr ? appr.empId : lr.empId;
+    const title = appr ? appr.title : `${lr.type} — ${lr.days} day${lr.days > 1 ? "s" : ""}`;
+    this.toast(decision, `${title} for ${H.fullName(H.emp(empId))}.`, decision === "Approved" ? "success" : "err");
   },
 
   /* ---------- Time clock ---------- */
@@ -356,6 +361,83 @@ const App = {
       this.updateNavCounts();
       if (this.route === "leave") this.renderRoute("leave");
       this.toast("Request submitted", `${days} day(s) of ${f.type.value} sent for approval (demo).`, "success");
+    });
+  },
+
+  // HR / Manager adds leave for any employee (Approved directly, or logged as Pending)
+  openAddLeave() {
+    const empOptions = DB.employees.slice()
+      .sort((a, z) => H.fullName(a).localeCompare(H.fullName(z)))
+      .map((e) => `<option value="${e.id}">${H.fullName(e)} · ${e.id}</option>`).join("");
+    const body = `<form id="addLeaveForm">
+      <div class="field"><label>Employee</label><select class="select" name="empId">${empOptions}</select></div>
+      <div class="field"><label>Leave type</label><select class="select" name="type">${DB.leaveBalances.map((b) => `<option>${b.type}</option>`).join("")}</select></div>
+      <div class="form-row">
+        <div class="field"><label>From</label><input class="input" type="date" name="from" value="2026-07-20" /></div>
+        <div class="field"><label>To</label><input class="input" type="date" name="to" value="2026-07-22" /></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Status</label><select class="select" name="status"><option>Approved</option><option>Pending</option></select></div>
+        <div class="field"><label>Reason (optional)</label><input class="input" name="reason" placeholder="e.g. Annual leave" /></div>
+      </div>
+      <p class="text-3" style="font-size:12px">HR / Managers can record leave directly (Approved) or log it as Pending for review.</p>
+    </form>`;
+    const footer = `<button class="btn btn--ghost" data-action="close-modal">Cancel</button>
+      <button class="btn btn--primary" id="addLeaveSubmit">${icon("plus", 16)} Add leave</button>`;
+    this.openModal("Add Leave", body, footer);
+    document.getElementById("addLeaveSubmit").addEventListener("click", () => {
+      const f = document.getElementById("addLeaveForm");
+      const from = f.from.value, to = f.to.value;
+      if (!from || !to || to < from) { this.toast("Invalid dates", "Please choose a valid date range.", "err"); return; }
+      const days = Math.max(1, Math.round((new Date(to) - new Date(from)) / 86400000) + 1);
+      const id = "LV-" + (1056 + DB.leaveRequests.length);
+      const status = f.status.value;
+      const empId = f.empId.value;
+      DB.leaveRequests.unshift({ id, empId, type: f.type.value, from, to, days, status, reason: f.reason.value || "—", submitted: DB.today });
+      if (status === "Pending") {
+        DB.approvals.unshift({ id, kind: "Leave", empId, title: `${f.type.value} — ${days} day${days > 1 ? "s" : ""}`, detail: `${H.fmtDateShort(from)}–${H.fmtDateShort(to)} · ${f.reason.value || "No reason given"}`, submitted: DB.today, priority: "normal" });
+      }
+      this.closeModal();
+      this.updateNavCounts();
+      if (this.route === "leave") this.renderRoute("leave");
+      this.toast("Leave added", `${days} day${days > 1 ? "s" : ""} of ${f.type.value} for ${H.fullName(H.emp(empId))} — ${status} (demo).`, "success");
+    });
+  },
+
+  // Edit a leave record's details (type / dates / reason). Approval stays on the Approvals page.
+  openEditLeave(id) {
+    const l = DB.leaveRequests.find((x) => x.id === id);
+    if (!l) return;
+    const who = H.fullName(H.emp(l.empId));
+    const typeOpts = DB.leaveBalances.map((b) => `<option ${b.type === l.type ? "selected" : ""}>${b.type}</option>`).join("");
+    const body = `<form id="editLeaveForm">
+      <p class="text-2" style="font-size:12.5px;margin-bottom:14px">Editing leave for <strong>${who}</strong> · <span class="muted">${l.id}</span> ${leaveStatusPill(l.status)}</p>
+      <div class="field"><label>Leave type</label><select class="select" name="type">${typeOpts}</select></div>
+      <div class="form-row">
+        <div class="field"><label>From</label><input class="input" type="date" name="from" value="${l.from}" /></div>
+        <div class="field"><label>To</label><input class="input" type="date" name="to" value="${l.to}" /></div>
+      </div>
+      <div class="field"><label>Reason</label><input class="input" name="reason" value="${l.reason === "—" ? "" : l.reason}" placeholder="Reason for leave" /></div>
+      <p class="text-3" style="font-size:12px">Approval status is decided on the Approvals page.</p>
+    </form>`;
+    const footer = `<button class="btn btn--ghost" data-action="close-modal">Cancel</button>
+      <button class="btn btn--primary" id="editLeaveSubmit">${icon("check", 16)} Save changes</button>`;
+    this.openModal("Edit Leave", body, footer);
+    document.getElementById("editLeaveSubmit").addEventListener("click", () => {
+      const f = document.getElementById("editLeaveForm");
+      const from = f.from.value, to = f.to.value;
+      if (!from || !to || to < from) { this.toast("Invalid dates", "Please choose a valid date range.", "err"); return; }
+      const days = Math.max(1, Math.round((new Date(to) - new Date(from)) / 86400000) + 1);
+      l.type = f.type.value; l.from = from; l.to = to; l.days = days; l.reason = f.reason.value || "—";
+      // keep the Approvals queue entry in sync if this leave is still pending there
+      const appr = DB.approvals.find((a) => a.id === l.id);
+      if (appr) {
+        appr.title = `${l.type} — ${days} day${days > 1 ? "s" : ""}`;
+        appr.detail = `${H.fmtDateShort(from)}–${H.fmtDateShort(to)} · ${l.reason === "—" ? "No reason given" : l.reason}`;
+      }
+      this.closeModal();
+      if (this.route === "leave") this.renderRoute("leave");
+      this.toast("Leave updated", `${who}'s ${l.type} updated (demo).`, "success");
     });
   },
 

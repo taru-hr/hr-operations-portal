@@ -14,8 +14,8 @@ analytics and an AI assistant.
 
 ## ✨ Highlights
 
-- **9 fully navigable sections** — Dashboard, Employees, Time Tracking, Leave
-  Management, Compensation & Benefits, Approvals, Reports, AI Assistant, Settings.
+- **10 fully navigable sections** — Dashboard, Employees, Time Clock, Attendance,
+  Leave Management, Compensation & Benefits, Approvals, Reports, AI Assistant, Settings.
 - **Internally consistent data** — every KPI, chart and table is computed live
   from a single mock dataset, so the app behaves like a real system.
 - **Role-based access control (RBAC) demo** — a "Viewing as" switcher on the
@@ -35,8 +35,9 @@ analytics and an AI assistant.
 |---|---|
 | 🏠 **Dashboard** | KPI cards, headcount growth, attendance snapshot, activity feed & upcoming people-ops events |
 | 👥 **Employees** | Searchable/filterable directory with employee profiles & org details |
-| ⏰ **Time Tracking** | Clock in/out, weekly timesheet, live attendance log & trends |
-| 🌴 **Leave Management** | Leave balances, request workflow, team requests with status |
+| ⏰ **Time Clock** | Your personal clock in/out (Office / Remote), weekly timesheet, work-time stats & self-service **Request Leave** |
+| 🗓️ **Attendance** | Team-wide attendance — today's log (filterable by status), KPIs & weekly trend |
+| 🌴 **Leave Management** | HR/Manager view — view & edit leave records, add leave for any employee, balances (approvals live in **Approvals**) |
 | 💶 **Compensation & Benefits** | Per-employee salary, grade/band & compa-ratio, benefits enrolment, pay & benefits history — opened from any employee's profile — plus a live **role-based access (RBAC)** demo |
 | ✅ **Approvals** | Unified queue for leave, timesheets, expenses & equipment with approve/reject |
 | 📊 **Reports** | People analytics: headcount, attendance, leave, attrition & engagement |
