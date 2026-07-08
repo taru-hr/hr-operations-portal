@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaruHR — HR Operations Portal</title>
+  <meta name="description" content="HR Operations Portal — a portfolio prototype demonstrating how an HRIS works. Built by TaruHR." />
+  <!-- Inline SVG favicon (no external asset needed) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Ctext x='16' y='22' font-size='18' font-family='Segoe UI,Arial' font-weight='700' fill='white' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Mobile overlay for sidebar -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="app" id="app">
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <div class="brand-mark">T</div>
+        <div class="brand-text">
+          <span class="brand-name">TaruHR</span>
+          <span class="brand-sub">HR Operations Portal</span>
+        </div>
+      </div>
+
+      <div class="sidebar__badge">
+        <span class="pill pill--proto">● Portfolio Prototype</span>
+      </div>
+
+      <nav class="sidebar__nav" id="nav">
+        <span class="nav-label">Main</span>
+        <a class="nav-item" href="#dashboard" data-route="dashboard"></a>
+        <a class="nav-item" href="#employees" data-route="employees"></a>
+        <a class="nav-item" href="#time" data-route="time"></a>
+        <a class="nav-item" href="#leave" data-route="leave"></a>
+        <a class="nav-item" href="#approvals" data-route="approvals"></a>
+
+        <span class="nav-label">Insights</span>
+        <a class="nav-item" href="#reports" data-route="reports"></a>
+
+        <span class="nav-label">System</span>
+        <a class="nav-item" href="#assistant" data-route="assistant"></a>
+        <a class="nav-item" href="#settings" data-route="settings"></a>
+      </nav>
+
+      <div class="sidebar__user" id="sidebarUser">
+        <!-- rendered by app.js -->
+      </div>
+    </aside>
+
+    <!-- ================= MAIN ================= -->
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar__left">
+          <button class="icon-btn topbar__menu" id="menuToggle" aria-label="Toggle menu">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <div>
+            <h1 class="topbar__title" id="pageTitle">Dashboard</h1>
+            <p class="topbar__subtitle" id="pageSubtitle">Welcome back</p>
+          </div>
+        </div>
+
+        <div class="topbar__right">
+          <div class="search">
+            <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="m20 20-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input type="text" id="globalSearch" placeholder="Search employees, requests…" autocomplete="off" />
+          </div>
+
+          <button class="icon-btn" id="themeToggle" aria-label="Toggle theme" title="Toggle light / dark">
+            <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg>
+          </button>
+
+          <button class="icon-btn icon-btn--dot" id="notifBtn" aria-label="Notifications" title="Notifications">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+
+          <div class="topbar__avatar" id="topbarAvatar"><!-- rendered by app.js --></div>
+        </div>
+      </header>
+
+      <main class="page" id="page">
+        <!-- Page content rendered here by app.js -->
+      </main>
+
+      <footer class="app-footer">
+        <span>TaruHR — HR Operations Portal · <strong>Portfolio prototype &amp; demo application</strong>. All data is fictional.</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <!-- Scripts load in dependency order; no bundler required -->
+  <script src="js/data.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/pages.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
