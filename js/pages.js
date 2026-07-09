@@ -247,7 +247,7 @@ const Pages = {
     return `
       <div class="page-head">
         <div>
-          <h2>Good morning, Taru 👋</h2>
+          <h2>Good morning 👋</h2>
           <p>Here's your people operations snapshot for ${H.fmtDate(DB.today)}.</p>
         </div>
         <div class="page-actions">
