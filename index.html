@@ -1,12 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TaruHR — HR Operations Portal</title>
   <meta name="description" content="HR Operations Portal — a portfolio prototype demonstrating how an HRIS works. Built by TaruHR." />
   <!-- Inline SVG favicon (no external asset needed) -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Ctext x='16' y='22' font-size='18' font-family='Segoe UI,Arial' font-weight='700' fill='white' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2322d3ee'/%3E%3Ctext x='16' y='22' font-size='18' font-family='Segoe UI,Arial' font-weight='700' fill='%2304151f' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E" />
+  <!-- Space Grotesk — geometric display face for headings (tech feel) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -29,14 +33,20 @@
       </div>
 
       <nav class="sidebar__nav" id="nav">
-        <span class="nav-label">Main</span>
+        <span class="nav-label">Overview</span>
         <a class="nav-item" href="#dashboard" data-route="dashboard"></a>
         <a class="nav-item" href="#employees" data-route="employees"></a>
-        <a class="nav-item" href="#time" data-route="time"></a>
+
+        <span class="nav-label">Team</span>
         <a class="nav-item" href="#attendance" data-route="attendance"></a>
         <a class="nav-item" href="#leave" data-route="leave"></a>
-        <a class="nav-item" href="#comp" data-route="comp"></a>
         <a class="nav-item" href="#approvals" data-route="approvals"></a>
+
+        <span class="nav-label">My Time</span>
+        <a class="nav-item" href="#time" data-route="time"></a>
+
+        <span class="nav-label">Pay &amp; Benefits</span>
+        <a class="nav-item" href="#comp" data-route="comp"></a>
 
         <span class="nav-label">Insights</span>
         <a class="nav-item" href="#reports" data-route="reports"></a>

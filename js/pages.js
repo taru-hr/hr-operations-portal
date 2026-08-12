@@ -213,7 +213,7 @@ const Pages = {
 
     const growthChart = Charts.line({
       xLabels: DB.headcountTrend.map((d) => d.m),
-      series: [{ name: "Headcount", color: "#4f46e5", points: DB.headcountTrend.map((d) => d.v) }],
+      series: [{ name: "Headcount", color: "#22d3ee", points: DB.headcountTrend.map((d) => d.v) }],
       height: 240, area: true,
     });
 
@@ -898,7 +898,7 @@ const Pages = {
           <div class="grid grid-3 section-gap">
             <div class="card col-span-2">
               <div class="card__head"><div><div class="card__title">Headcount Growth</div><div class="card__sub">Monthly, last 8 months</div></div></div>
-              <div class="card__body"><div class="chart">${Charts.line({ xLabels: DB.headcountTrend.map((d) => d.m), series: [{ name: "Headcount", color: "#4f46e5", points: DB.headcountTrend.map((d) => d.v) }], height: 250 })}</div></div>
+              <div class="card__body"><div class="chart">${Charts.line({ xLabels: DB.headcountTrend.map((d) => d.m), series: [{ name: "Headcount", color: "#22d3ee", points: DB.headcountTrend.map((d) => d.v) }], height: 250 })}</div></div>
             </div>
             <div class="card">
               <div class="card__head"><div class="card__title">By Type</div></div>

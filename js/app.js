@@ -586,7 +586,7 @@ const App = {
   escape(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); },
 
   /* ---------- Theme ---------- */
-  getStoredTheme() { try { return localStorage.getItem("taruhr-theme") || "light"; } catch { return "light"; } },
+  getStoredTheme() { try { return localStorage.getItem("taruhr-theme") || "dark"; } catch { return "dark"; } },
   applyTheme(theme, toast) {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem("taruhr-theme", theme); } catch {}
