@@ -885,6 +885,7 @@ const Pages = {
     switch (Pages.reportTab) {
       case "headcount": {
         const dept = H.headcountByDept();
+        const typeData = H.byEmploymentType();
         const rows = dept.map((d) => {
           const dObj = DB.departments.find((x) => x.name === d.label);
           return `<tr>
@@ -901,8 +902,11 @@ const Pages = {
               <div class="card__body"><div class="chart">${Charts.line({ xLabels: DB.headcountTrend.map((d) => d.m), series: [{ name: "Headcount", color: "#22d3ee", points: DB.headcountTrend.map((d) => d.v) }], height: 250 })}</div></div>
             </div>
             <div class="card">
-              <div class="card__head"><div class="card__title">By Type</div></div>
-              <div class="card__body"><div class="chart-flex" style="justify-content:center">${Charts.donut(H.byEmploymentType(), { centerValue: s.total, centerLabel: "total" })}</div></div>
+              <div class="card__head"><div class="card__title">Employment Type</div></div>
+              <div class="card__body">
+                <div class="chart-flex" style="justify-content:center"><div class="chart">${Charts.donut(typeData, { centerValue: s.total, centerLabel: "total" })}</div></div>
+                <div class="legend mt-16">${typeData.map((d) => `<div class="legend-item"><span class="swatch" style="background:${d.color}"></span><span class="lg-label">${d.label}</span><span class="lg-val">${d.value}</span></div>`).join("")}</div>
+              </div>
             </div>
           </div>
           <div class="grid grid-2">
@@ -949,7 +953,7 @@ const Pages = {
           </div>
           <div class="card"><div class="card__head"><div class="card__title">Hires vs Exits</div>
             <div class="legend" style="flex-direction:row;gap:16px"><div class="legend-item"><span class="swatch" style="background:#10b981"></span><span class="lg-label">Hires</span></div><div class="legend-item"><span class="swatch" style="background:#ef4444"></span><span class="lg-label">Exits</span></div></div>
-          </div><div class="card__body"><div class="chart">${Charts.groupedBars(DB.hiresVsExits, { labelA: "hires", labelB: "exits", height: 260 })}</div></div></div>`;
+          </div><div class="card__body"><div class="chart">${Charts.groupedBars(DB.hiresVsExits.map((d) => ({ label: d.m, a: d.hires, b: d.exits })), { labelA: "Hires", labelB: "Exits", height: 260 })}</div></div></div>`;
       }
       case "engagement": {
         const enps = 42;

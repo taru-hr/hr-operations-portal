@@ -10,9 +10,11 @@
   --brand-600:    #0e7490;
   --brand-700:    #155e75;
   --brand-2:      #2563eb;
+  --brand-3:      #7c3aed;
   --brand-soft:   #e2f7fb;
   --on-brand:     #ffffff;
   --glow:         rgba(8,145,178,.28);
+  --glow-2:       rgba(124,58,237,.22);
 
   /* Status */
   --green:  #10b981;  --green-soft:  #d1fae5;
@@ -52,6 +54,7 @@
 
   --font: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
   --font-display: "Space Grotesk", var(--font);
+  --font-mono: "Space Mono", ui-monospace, "Cascadia Code", "Segoe UI Mono", Consolas, monospace;
 }
 
 [data-theme="dark"] {
@@ -60,9 +63,11 @@
   --brand-600:    #4be3f7;
   --brand-700:    #0e7490;
   --brand-2:      #0ea5e9;
+  --brand-3:      #8b5cf6;
   --brand-soft:   rgba(34,211,238,.12);
   --on-brand:     #04151f;
   --glow:         rgba(34,211,238,.42);
+  --glow-2:       rgba(139,92,246,.42);
 
   --bg:        #060b15;
   --surface:   rgba(17,27,46,.82);
@@ -770,3 +775,109 @@ tr.perm-active td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
   background: rgba(34,211,238,.10);
   color: #67e8f9; border: 1px solid rgba(34,211,238,.28);
 }
+
+/* ============================================================
+   Futuristic level-up — HUD type, neon, living light & energy
+   ============================================================ */
+/* Monospace "instrument" labels & entity IDs → terminal/HUD texture */
+.nav-label, .admin-nav-label, .mi-label, .cu-sub, .lr-time {
+  font-family: var(--font-mono);
+}
+.nav-label { letter-spacing: .5px; }
+
+/* Neon cyan glow on hero figures & the wordmark (dark theme) */
+[data-theme="dark"] .stat__value,
+[data-theme="dark"] .big-num,
+[data-theme="dark"] .salary-hero .amount,
+[data-theme="dark"] .brand-name {
+  text-shadow: 0 0 22px rgba(34,211,238,.35);
+}
+
+/* Living background — the cyan aurora slowly drifts and breathes */
+[data-theme="dark"] body::before {
+  animation: aurora 20s ease-in-out infinite alternate;
+}
+@keyframes aurora {
+  from { opacity: .7; transform: translate3d(0, 0, 0) scale(1); }
+  to   { opacity: 1;  transform: translate3d(-1.8%, 1.2%, 0) scale(1.07); }
+}
+
+/* Brand mark — a gentle energy pulse */
+[data-theme="dark"] .brand-mark { animation: markPulse 3.6s ease-in-out infinite; }
+@keyframes markPulse {
+  0%, 100% { box-shadow: 0 6px 18px rgba(34,211,238,.45); }
+  50%      { box-shadow: 0 6px 28px rgba(34,211,238,.78); }
+}
+
+/* Energy sheen sweeping across the cyan data bars */
+.earn-row__bar span, .progress > span { position: relative; overflow: hidden; }
+.earn-row__bar span::after, .progress > span::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
+  transform: translateX(-100%);
+  animation: sheen 3s ease-in-out infinite;
+}
+@keyframes sheen { 0% { transform: translateX(-100%); } 55%, 100% { transform: translateX(100%); } }
+
+/* Respect reduced-motion preferences — kill all ambient animation */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="dark"] body::before,
+  [data-theme="dark"] .brand-mark,
+  .earn-row__bar span::after,
+  .progress > span::after { animation: none; }
+}
+
+/* ============================================================
+   Command-center mode — blue↔violet spectrum, edge-lit holo
+   panels, gradient headlines & heavier bloom
+   ============================================================ */
+/* Violet "reactor" uplight added to the ambient aurora */
+[data-theme="dark"] body::before {
+  background:
+    radial-gradient(1100px 640px at 88% -10%, rgba(34,211,238,.16), transparent 60%),
+    radial-gradient(900px 560px at 10% 2%, rgba(59,130,246,.13), transparent 55%),
+    radial-gradient(820px 560px at 50% 118%, rgba(139,92,246,.17), transparent 60%);
+}
+
+/* Full-spectrum fills where no dark text sits on top */
+.earn-row__bar span { background: linear-gradient(90deg, var(--brand), var(--brand-2) 52%, var(--brand-3)); }
+[data-theme="dark"] .msg--user .msg__bubble { background: linear-gradient(135deg, #3b82f6, var(--brand-3)); color: #fff; }
+.ai-ava { background: linear-gradient(135deg, #3b82f6, var(--brand-3)); }
+.ai-ava svg { color: #fff; }
+
+/* Heavier bloom + violet halo on interactive accents */
+.btn--primary { box-shadow: 0 6px 20px var(--glow), 0 2px 34px -6px var(--glow-2); }
+.btn--primary:hover { box-shadow: 0 10px 28px var(--glow), 0 4px 42px -6px var(--glow-2); transform: translateY(-1px); }
+.chip.active { box-shadow: 0 4px 14px var(--glow), 0 0 22px -4px var(--glow-2); }
+[data-theme="dark"] .nav-item.active { box-shadow: inset 0 0 0 1px rgba(34,211,238,.34), 0 0 24px rgba(124,92,246,.22); }
+
+/* KPI numbers glow cyan→violet like backlit readouts */
+[data-theme="dark"] .stat__value,
+[data-theme="dark"] .big-num,
+[data-theme="dark"] .salary-hero .amount {
+  text-shadow: 0 0 20px rgba(34,211,238,.35), 0 0 44px rgba(139,92,246,.24);
+}
+
+/* Gradient display headlines (white → cyan → violet) */
+[data-theme="dark"] .page-head h2,
+[data-theme="dark"] .topbar__title {
+  background: linear-gradient(100deg, #eef5ff 12%, var(--brand) 52%, var(--brand-3) 96%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+/* keep inline pills/badges inside headings from inheriting the transparent fill */
+.pill { -webkit-text-fill-color: currentColor; }
+
+/* Edge-lit holographic panels — a cyan→violet hairline that catches the light */
+[data-theme="dark"] .card, [data-theme="dark"] .stat { position: relative; }
+[data-theme="dark"] .card::after, [data-theme="dark"] .stat::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(140deg, rgba(34,211,238,.5), rgba(139,92,246,.18) 42%, transparent 72%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Holographic glow on the KPI icon tiles — each in its own colour */
+[data-theme="dark"] .stat__icon { box-shadow: 0 0 18px -3px currentColor, inset 0 0 0 1px rgba(255,255,255,.07); }
