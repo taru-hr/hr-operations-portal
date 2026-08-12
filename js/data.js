@@ -531,3 +531,169 @@ function buildComp(emp) {
     history, benefits, benefitsHistory,
   };
 }
+
+/* ============================================================
+   Employee Lifecycle showcase — a demo employee (Emma) whose
+   full HRIS record you can explore end-to-end, from hire to exit.
+   ============================================================ */
+DB.lifecycle = {
+  employee: {
+    id: "EMP-023", first: "Emma", last: "Virtanen", role: "HR Specialist",
+    deptId: "ppl", dept: "People & Culture", team: "HR Operations",
+    manager: "Taru Hervoe", managerId: "EMP-001", managerRole: "HR Operations Manager",
+    location: "Helsinki, FI", office: "Helsinki HQ", email: "emma.virtanen@taruhr.com",
+    phone: "+358 40 123 4567", start: "2023-09-04", status: "Active",
+    type: "Full-time", agreement: "Senior salaried (Ylemmät toimihenkilöt)",
+  },
+
+  // The seven lifecycle stages, in order, with Emma's status in each
+  stages: [
+    { key: "recruitment", label: "Recruitment", icon: "search",    status: "done",     when: "Jul–Sep 2023" },
+    { key: "onboarding",  label: "Onboarding",  icon: "approvals", status: "done",     when: "Sep 2023" },
+    { key: "employment",  label: "Employment",  icon: "briefcase", status: "current",  when: "Since Sep 2023" },
+    { key: "changes",     label: "Changes",     icon: "history",   status: "done",     when: "Last: Jun 2025" },
+    { key: "absence",     label: "Absence",     icon: "leave",     status: "active",   when: "12 d used YTD" },
+    { key: "development", label: "Development",  icon: "trendUp",   status: "active",   when: "Cycle open" },
+    { key: "offboarding", label: "Offboarding", icon: "logout",    status: "upcoming", when: "Not started" },
+  ],
+
+  recruitment: {
+    reqId: "REQ-2023-041", source: "LinkedIn", recruiter: "Isabella Rossi", applicants: 47,
+    funnel: [
+      { step: "Applied",    date: "2023-07-28", note: "Applied via LinkedIn" },
+      { step: "Screening",  date: "2023-08-02", note: "Phone screen — passed" },
+      { step: "Interview",  date: "2023-08-09", note: "Panel: Taru + Isabella" },
+      { step: "Case study", date: "2023-08-14", note: "HR case exercise — strong" },
+      { step: "Offer",      date: "2023-08-18", note: "Offer sent & accepted" },
+      { step: "Hired",      date: "2023-09-04", note: "Start date confirmed" },
+    ],
+  },
+
+  onboarding: [
+    { task: "Sign employment contract",       cat: "Documents", owner: "HR",         done: true },
+    { task: "Submit tax card & bank details",  cat: "Documents", owner: "Emma",       done: true },
+    { task: "Verify ID & right to work",       cat: "Documents", owner: "Emma",       done: true },
+    { task: "Laptop & phone issued",           cat: "Equipment", owner: "IT",         done: true },
+    { task: "Access badge & desk assigned",    cat: "Equipment", owner: "Facilities", done: true },
+    { task: "Email & HRIS account created",    cat: "Access",    owner: "IT",         done: true },
+    { task: "Payroll & benefits enrolment",    cat: "Access",    owner: "HR",         done: true },
+    { task: "Team intro & assigned a buddy",   cat: "Tasks",     owner: "Manager",    done: true },
+    { task: "Mandatory training assigned",     cat: "Tasks",     owner: "HR",         done: true },
+    { task: "30-day check-in",                 cat: "Tasks",     owner: "Manager",    done: true },
+  ],
+
+  employment: {
+    contract: "Permanent", ftePct: 100, weekly: 37.5, daily: 7.5,
+    agreement: "Ylemmät toimihenkilöt (Senior salaried) · 37.5 h/wk", probation: "Passed · Mar 2024",
+    noticePeriod: "1 month", orgUnit: "People & Culture", costCenter: "CC-140",
+    workModel: "Hybrid · 3 days in office", flexitime: "Flexitime · core 09:30–15:00 · ± 3 h",
+    bank: "+4.5 h", benefits: ["Occupational healthcare", "Lunch benefit", "Wellness allowance", "Bike benefit"],
+  },
+
+  salary: {
+    monthly: 3400, currency: "€", grade: "P2 · Professional", band: "€3,000 – €4,000",
+    effective: "2025-06-01", nextReview: "2026-12-01",
+    history: [
+      { date: "2023-09-04", amount: 3050, reason: "Starting salary" },
+      { date: "2025-06-01", amount: 3400, reason: "Promotion + merit increase" },
+    ],
+  },
+
+  // Job & contract changes over time
+  changes: [
+    { date: "2025-06-01", type: "Promotion",     from: "HR Coordinator", to: "HR Specialist", by: "Taru Hervoe" },
+    { date: "2025-06-01", type: "Salary change",  from: "€3,050", to: "€3,400", by: "Taru Hervoe" },
+    { date: "2024-03-15", type: "Working time",   from: "Fixed hours", to: "Flexitime", by: "HR" },
+    { date: "2023-09-04", type: "Hire",           from: "—", to: "HR Coordinator", by: "Isabella Rossi" },
+  ],
+
+  absences: {
+    balances: [
+      { type: "Annual Leave",   mode: "quota", entitled: 30, used: 12, pending: 0, available: 18, color: "#22d3ee" },
+      { type: "Sick Leave",     mode: "usage", used: 4, color: "#f59e0b" },
+      { type: "Personal Leave", mode: "usage", used: 2, color: "#8b5cf6" },
+    ],
+    history: [
+      { type: "Annual Leave",   from: "2026-06-23", to: "2026-06-27", days: 5, status: "Approved", reason: "Midsummer break" },
+      { type: "Sick Leave",     from: "2026-04-06", to: "2026-04-08", days: 3, status: "Approved", reason: "Flu recovery" },
+      { type: "Personal Leave", from: "2026-03-13", to: "2026-03-13", days: 1, status: "Approved", reason: "Moving day" },
+      { type: "Annual Leave",   from: "2026-02-16", to: "2026-02-20", days: 5, status: "Approved", reason: "Ski holiday" },
+      { type: "Annual Leave",   from: "2025-12-22", to: "2025-12-23", days: 2, status: "Approved", reason: "Christmas" },
+      { type: "Sick Leave",     from: "2025-11-10", to: "2025-11-10", days: 1, status: "Approved", reason: "Sick day" },
+      { type: "Personal Leave", from: "2025-09-05", to: "2025-09-05", days: 1, status: "Approved", reason: "Appointment" },
+    ],
+  },
+
+  documents: [
+    { name: "Employment contract",         type: "Contract",   status: "Signed",   date: "2023-09-01" },
+    { name: "Promotion letter",            type: "Contract",   status: "Signed",   date: "2025-06-01" },
+    { name: "Tax card (verokortti)",       type: "Payroll",    status: "On file",  date: "2023-09-02" },
+    { name: "ID verification",             type: "Compliance", status: "Verified", date: "2023-09-04" },
+    { name: "NDA & IP agreement",          type: "Compliance", status: "Signed",   date: "2023-09-01" },
+    { name: "Occupational health record",  type: "HR",         status: "On file",  date: "2023-09-20" },
+  ],
+
+  training: [
+    { name: "HRIS fundamentals",              status: "Completed",   date: "Oct 2023", hours: 8 },
+    { name: "GDPR & data protection",         status: "Completed",   date: "Sep 2023", hours: 4 },
+    { name: "Finnish labour law & TES",       status: "Completed",   date: "Jan 2024", hours: 12 },
+    { name: "Payroll basics (Palkka.fi)",     status: "Completed",   date: "Apr 2024", hours: 6 },
+    { name: "Compensation & benefits",        status: "In progress", date: "May 2026", hours: 10 },
+    { name: "People analytics with Power BI", status: "Enrolled",    date: "Sep 2026", hours: 16 },
+  ],
+
+  competencies: [
+    { name: "HRIS administration",       level: 4, target: 4, cat: "Technical" },
+    { name: "Payroll & TES knowledge",   level: 3, target: 4, cat: "Technical" },
+    { name: "Employment law",            level: 3, target: 4, cat: "Technical" },
+    { name: "Data & reporting",          level: 3, target: 4, cat: "Analytical" },
+    { name: "Stakeholder communication", level: 4, target: 4, cat: "Behavioural" },
+    { name: "Process improvement",       level: 3, target: 4, cat: "Behavioural" },
+  ],
+
+  goals: [
+    { goal: "Lead the HRIS data-quality clean-up", status: "On track",    due: "Q4 2026" },
+    { goal: "Complete C&B certification",          status: "In progress", due: "Q3 2026" },
+    { goal: "Automate the onboarding checklist",   status: "On track",    due: "Q4 2026" },
+  ],
+
+  hrTasks: [
+    { task: "Annual development review",         due: "2026-09-04", owner: "Taru Hervoe", status: "Upcoming",  priority: "normal" },
+    { task: "Confirm updated emergency contact", due: "2026-08-20", owner: "Emma",        status: "Pending",   priority: "normal" },
+    { task: "Renew occupational health check",   due: "2026-09-20", owner: "HR",          status: "Upcoming",  priority: "low" },
+    { task: "Probation review",                  due: "2024-03-04", owner: "Taru Hervoe", status: "Completed", priority: "normal" },
+  ],
+
+  // Offboarding is a template here — Emma is active, so nothing has run yet
+  offboarding: [
+    { step: "Resignation / termination logged", owner: "HR" },
+    { step: "Exit interview scheduled",         owner: "Manager" },
+    { step: "Knowledge handover plan",          owner: "Manager" },
+    { step: "System & data access revoked",     owner: "IT" },
+    { step: "Equipment returned",               owner: "Facilities" },
+    { step: "Final pay & holiday settlement",   owner: "Payroll" },
+    { step: "Certificate of employment issued", owner: "HR" },
+    { step: "Records archived per retention",   owner: "HR" },
+  ],
+
+  // Full chronological audit / history log — every event is tracked
+  audit: [
+    { date: "2026-06-23", event: "Annual leave approved (5 days)",                      cat: "Absence",     by: "Taru Hervoe" },
+    { date: "2026-06-15", event: "Development review cycle opened",                     cat: "Development", by: "System" },
+    { date: "2026-05-12", event: "Enrolled in 'Compensation & benefits' training",     cat: "Development", by: "Emma" },
+    { date: "2026-04-06", event: "Sick leave recorded (3 days)",                        cat: "Absence",     by: "System" },
+    { date: "2026-03-13", event: "Personal leave approved (1 day)",                     cat: "Absence",     by: "Taru Hervoe" },
+    { date: "2026-02-16", event: "Annual leave approved (5 days)",                      cat: "Absence",     by: "Taru Hervoe" },
+    { date: "2025-12-22", event: "Annual leave approved (2 days)",                      cat: "Absence",     by: "Taru Hervoe" },
+    { date: "2025-06-01", event: "Promoted to HR Specialist — salary €3,050 → €3,400",  cat: "Change",      by: "Taru Hervoe" },
+    { date: "2024-04-18", event: "Completed 'Payroll basics' training",                 cat: "Development", by: "Emma" },
+    { date: "2024-03-15", event: "Working-time model changed to Flexitime",             cat: "Change",      by: "HR" },
+    { date: "2024-03-04", event: "Probation review passed",                             cat: "Employment",  by: "Taru Hervoe" },
+    { date: "2024-01-22", event: "Completed 'Finnish labour law & TES' training",       cat: "Development", by: "Emma" },
+    { date: "2023-10-05", event: "Completed 'HRIS fundamentals' training",              cat: "Development", by: "Emma" },
+    { date: "2023-09-04", event: "Onboarding completed — all tasks done",               cat: "Onboarding",  by: "HR" },
+    { date: "2023-09-04", event: "Employment started — HR Coordinator",                 cat: "Employment",  by: "Isabella Rossi" },
+    { date: "2023-08-18", event: "Offer accepted",                                      cat: "Recruitment", by: "Emma" },
+    { date: "2023-07-28", event: "Application received (REQ-2023-041)",                 cat: "Recruitment", by: "System" },
+  ],
+};

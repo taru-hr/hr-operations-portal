@@ -5,6 +5,7 @@
 const ROUTES = {
   dashboard: { label: "Dashboard",       sub: "Your people operations overview", icon: "dashboard" },
   employees: { label: "Employees",       sub: "Directory & profiles",            icon: "employees" },
+  lifecycle: { label: "Employee Lifecycle", navLabel: "Lifecycle", sub: "Emma's end-to-end HRIS journey", icon: "cycle" },
   time:      { label: "Time Clock",      sub: "Clock in/out & your timesheet",   icon: "time" },
   attendance:{ label: "Attendance",      sub: "Team attendance overview",         icon: "userCheck" },
   leave:     { label: "Leave Management", sub: "Team leave records",              icon: "leave", count: () => H.pendingLeaveCount() },
@@ -148,6 +149,8 @@ const App = {
         "set-mode": () => this.setMode(el.dataset.mode),
         "edit-stamp": () => this.openEditStamp(+el.dataset.i),
         "run-payroll": () => this.openRunPayroll(),
+        "lc-stage": () => this.selectLcStage(el.dataset.stage),
+        "lc-onboard": () => this.toggleOnboard(+el.dataset.i),
         "toggle-benefit": () => this.toggleBenefit(el.dataset.id),
         "edit-comp": () => this.openEditComp(),
         "report-tab": () => { Pages.reportTab = el.dataset.tab; this.swapTabs(el); document.getElementById("reportBody").innerHTML = Pages.reportBody(); },
@@ -313,6 +316,24 @@ const App = {
       if (this.route === "payroll" || this.route === "attendance") this.renderRoute(this.route);
       this.toast("Pay data transferred to payroll", `${p.label} · batch ${ref} · ${emps} employees (demo).`, "success");
     });
+  },
+
+  /* ---------- Employee Lifecycle (Emma) ---------- */
+  selectLcStage(stage) {
+    Pages.lifecycleStage = stage;
+    const panel = document.getElementById("lcPanel");
+    if (panel) panel.innerHTML = Pages.lcPanel();
+    document.querySelectorAll(".lc-step").forEach((el) => el.classList.toggle("active", el.dataset.stage === stage));
+  },
+  toggleOnboard(i) {
+    const items = DB.lifecycle.onboarding;
+    if (!items[i]) return;
+    items[i].done = !items[i].done;
+    const panel = document.getElementById("lcPanel");
+    if (panel) panel.innerHTML = Pages.lcPanel();
+    const pct = Math.round((items.filter((o) => o.done).length / items.length) * 100);
+    const pctEl = document.getElementById("lcOnbPct");
+    if (pctEl) pctEl.textContent = pct + "%";
   },
 
   /* ---------- Compensation & Benefits ---------- */

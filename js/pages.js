@@ -42,6 +42,8 @@ const Icons = {
   history: `<path d="M3 4v5h5"/><path d="M3.5 9a9 9 0 1 1-1 4"/><path d="M12 8v4l3 2"/>`,
   dollar: `<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
   payroll: `<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>`,
+  search: `<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>`,
+  cycle: `<path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 21v-5h5"/>`,
   laptop: `<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/>`,
   doc: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>`,
   send: `<path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/>`,
@@ -745,6 +747,284 @@ const Pages = {
         ${formatCard}
       </div>
       ${tableCard}`;
+  },
+
+  /* ---------------- EMPLOYEE LIFECYCLE (Emma) ---------------- */
+  lifecycleStage: "employment",
+
+  lifecycle() {
+    const L = DB.lifecycle;
+    const stage = Pages.lifecycleStage;
+    const steps = L.stages.map((s) => {
+      const active = s.key === stage;
+      const mark = s.status === "done" ? icon("check", 15) : icon(s.icon, 16);
+      return `<button class="lc-step lc-step--${s.status} ${active ? "active" : ""}" data-action="lc-stage" data-stage="${s.key}">
+        <span class="lc-step__dot">${mark}</span>
+        <span class="lc-step__label">${s.label}</span>
+        <span class="lc-step__when">${s.when}</span>
+      </button>`;
+    }).join("");
+
+    return `
+      <div class="page-head">
+        <div><h2>Employee Lifecycle</h2><p>Follow <strong>Emma</strong> through the full HRIS journey — recruitment to offboarding</p></div>
+        <div class="page-actions"><span class="pill pill--proto">● Demo employee</span></div>
+      </div>
+
+      <div class="card lc-journey section-gap">
+        <div class="card__head"><div><div class="card__title">Lifecycle journey</div><div class="card__sub">Click a stage to explore Emma's record at that point</div></div></div>
+        <div class="card__body"><div class="lc-stepper">${steps}</div></div>
+      </div>
+
+      <div class="lc-layout">
+        <div class="lc-aside">${Pages.lcProfile()}</div>
+        <div class="lc-main" id="lcPanel">${Pages.lcPanel()}</div>
+      </div>
+
+      ${Pages.lcAudit()}`;
+  },
+
+  lcProfile() {
+    const L = DB.lifecycle, e = L.employee;
+    const onbDone = L.onboarding.filter((o) => o.done).length;
+    const onbPct = Math.round((onbDone / L.onboarding.length) * 100);
+    const compAvg = (L.competencies.reduce((s, c) => s + c.level, 0) / L.competencies.length).toFixed(1);
+    const openTasks = L.hrTasks.filter((t) => t.status !== "Completed").length;
+    const annualLeft = (L.absences.balances.find((b) => b.type === "Annual Leave") || {}).available || 0;
+    const fact = (k, v) => `<div class="lc-fact"><span class="lc-fact__k">${k}</span><span class="lc-fact__v">${v}</span></div>`;
+    const quick = (id, v, k) => `<div class="lc-quick__item"><div class="lc-quick__v"${id ? ` id="${id}"` : ""}>${v}</div><div class="lc-quick__k">${k}</div></div>`;
+
+    const tasks = L.hrTasks.map((t) => {
+      const tone = t.status === "Completed" ? "green" : t.status === "Pending" ? "amber" : "blue";
+      return `<div class="list-row"><div class="dot-icon tint-brand">${icon("approvals", 16)}</div>
+        <div style="flex:1;min-width:0"><div class="lr-title">${t.task}</div><div class="lr-sub">${t.owner} · due ${H.fmtDateShort(t.due)}</div></div>
+        ${pill(t.status, tone)}</div>`;
+    }).join("");
+
+    return `
+      <div class="card">
+        <div class="card__body">
+          <div class="lc-hero">
+            ${avatar(e, "avatar--xl")}
+            <div style="min-width:0">
+              <h3 class="lc-hero__name">${H.fullName(e)}</h3>
+              <div class="muted">${e.role} · ${e.dept}</div>
+              <div class="lc-hero__pills">${statusPill(e.status)} ${pill(e.agreement.split(" (")[0], "violet")}</div>
+            </div>
+          </div>
+          <div class="lc-facts">
+            ${fact("Employee ID", e.id)}
+            ${fact("Manager", e.manager)}
+            ${fact("Department", e.dept)}
+            ${fact("Location", e.location)}
+            ${fact("Started", H.fmtDate(e.start))}
+            ${fact("Tenure", H.tenureYears(e.start) + " yrs")}
+            ${fact("Working time", L.employment.weekly + " h/wk")}
+            ${fact("Email", e.email)}
+          </div>
+          <div class="lc-quick">
+            ${quick("lcOnbPct", onbPct + "%", "Onboarding")}
+            ${quick("", compAvg, "Avg competency")}
+            ${quick("", annualLeft + " d", "Annual left")}
+            ${quick("", openTasks, "Open tasks")}
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card__head"><div class="card__title">HR tasks</div><span class="pill pill--gray">${openTasks} open</span></div>
+        <div class="card__body card__body--flush" style="padding:4px 20px">${tasks}</div>
+      </div>`;
+  },
+
+  lcPanel() {
+    switch (Pages.lifecycleStage) {
+      case "recruitment": return Pages.lcRecruitment();
+      case "onboarding":  return Pages.lcOnboarding();
+      case "changes":     return Pages.lcChanges();
+      case "absence":     return Pages.lcAbsence();
+      case "development": return Pages.lcDevelopment();
+      case "offboarding": return Pages.lcOffboarding();
+      default:            return Pages.lcEmployment();
+    }
+  },
+
+  lcPanelHead(ic, title, sub) {
+    return `<div class="lc-panel-head">${icon(ic, 20)}<div><h3>${title}</h3><p class="muted">${sub}</p></div></div>`;
+  },
+
+  lcRecruitment() {
+    const r = DB.lifecycle.recruitment;
+    const funnel = r.funnel.map((f, i) => {
+      const last = i === r.funnel.length - 1;
+      return `<div class="lc-tl-item">
+        <div class="lc-tl-dot ${last ? "lc-tl-dot--done" : ""}">${last ? icon("check", 13) : i + 1}</div>
+        <div class="lc-tl-body"><div class="lc-tl-title">${f.step}</div><div class="lc-tl-sub">${H.fmtDate(f.date)} · ${f.note}</div></div>
+      </div>`;
+    }).join("");
+    return `
+      ${Pages.lcPanelHead("search", "Recruitment", "How Emma was hired — from application to signed offer")}
+      <div class="grid grid-3 section-gap">
+        ${statCard({ icon: "doc", tint: "tint-blue", label: "Requisition", value: "#" + r.reqId.split("-").slice(-1)[0], foot: r.reqId })}
+        ${statCard({ icon: "users", tint: "tint-violet", label: "Applicants", value: r.applicants, foot: "via " + r.source })}
+        ${statCard({ icon: "userCheck", tint: "tint-green", label: "Outcome", value: "Hired", foot: "by " + r.recruiter })}
+      </div>
+      ${card("Selection funnel", "6 stages · ~5 weeks", `<div class="lc-timeline">${funnel}</div>`)}`;
+  },
+
+  lcOnboarding() {
+    const items = DB.lifecycle.onboarding;
+    const done = items.filter((o) => o.done).length;
+    const pct = Math.round((done / items.length) * 100);
+    const groups = ["Documents", "Equipment", "Access", "Tasks"].map((c) => {
+      const rows = items.map((o, i) => o.cat === c ? `
+        <button class="lc-check ${o.done ? "on" : ""}" data-action="lc-onboard" data-i="${i}">
+          <span class="lc-check__box">${o.done ? icon("check", 13) : ""}</span>
+          <span class="lc-check__task">${o.task}</span>
+          <span class="lc-check__owner">${o.owner}</span>
+        </button>` : "").join("");
+      return `<div class="lc-onb-group"><div class="lc-onb-cat">${c}</div>${rows}</div>`;
+    }).join("");
+    return `
+      ${Pages.lcPanelHead("approvals", "Onboarding", "First-day readiness — documents, equipment, access & tasks")}
+      ${card("Onboarding checklist", `<span id="lcOnbCount">${done}</span> of ${items.length} complete`, `
+        <div class="progress" style="margin-bottom:18px"><span id="lcOnbBar" style="width:${pct}%;background:linear-gradient(90deg,var(--brand),var(--brand-3))"></span></div>
+        <div class="lc-onb-grid">${groups}</div>
+        <div class="lc-note" style="margin-top:16px">${icon("info", 14)} Click any item to toggle it — progress updates live.</div>`)}`;
+  },
+
+  lcEmployment() {
+    const L = DB.lifecycle, em = L.employment, s = L.salary;
+    const benefits = em.benefits.map((b) => pill(b, "teal")).join(" ");
+    const agrName = em.agreement.split(" (")[0];                              // Ylemmät toimihenkilöt
+    const agrLabel = (em.agreement.match(/\(([^)]+)\)/) || [])[1] || agrName; // Senior salaried
+    return `
+      ${Pages.lcPanelHead("briefcase", "Employment", "Contract, working time, pay & benefits — the core record")}
+      <div class="grid grid-2">
+        ${card("Contract & terms", "", `
+          ${setRow("Contract type", "", pill(em.contract, "green"))}
+          ${setRow("Agreement", agrName + " · TES", pill(agrLabel, "violet"))}
+          ${setRow("Probation", "", pill(em.probation, "gray"))}
+          ${setRow("Notice period", "", `<strong>${em.noticePeriod}</strong>`)}
+          ${setRow("Org unit", "Cost center " + em.costCenter, `<span class="muted">${em.orgUnit}</span>`)}`)}
+        ${card("Working time", "", `
+          ${setRow("Weekly hours", em.ftePct + "% FTE", `<strong>${em.weekly} h</strong>`)}
+          ${setRow("Daily target", "", `<strong>${em.daily} h</strong>`)}
+          ${setRow("Model", "", pill("Flexitime", "blue"))}
+          ${setRow("Flex window", "", `<span class="muted">${em.flexitime}</span>`)}
+          ${setRow("Flexitime bank", "Current balance", pill(em.bank, "green"))}`)}
+      </div>
+      <div class="grid grid-2" style="margin-top:16px">
+        ${card("Salary", "Gross monthly · confidential", `
+          <div class="salary-hero" style="margin-bottom:14px"><span class="amount">€${s.monthly.toLocaleString("en-US")}</span><span class="per">/ month</span></div>
+          ${setRow("Pay grade", "", pill(s.grade, "violet"))}
+          ${setRow("Band", "", `<span class="muted">${s.band}</span>`)}
+          ${setRow("Effective", "", `<span class="muted">${H.fmtDate(s.effective)}</span>`)}
+          ${setRow("Next review", "", `<strong>${H.fmtDate(s.nextReview)}</strong>`)}`)}
+        ${card("Benefits & manager", em.benefits.length + " benefits", `
+          <div style="display:flex;flex-wrap:wrap;gap:8px">${benefits}</div>
+          <div class="lc-note" style="margin-top:16px">${icon("user", 14)} Reports to <strong>${L.employee.manager}</strong> · ${L.employee.managerRole}</div>`)}
+      </div>
+      <div style="margin-top:16px">${card("Documents", L.documents.length + " on file · versioned & auditable", `<div class="table-wrap"><table class="tbl">
+        <thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>${L.documents.map((d) => `<tr>
+          <td><div class="cell-user"><div class="dot-icon tint-brand" style="width:30px;height:30px">${icon("doc", 15)}</div><strong>${d.name}</strong></div></td>
+          <td>${pill(d.type, "gray")}</td>
+          <td>${pill(d.status, d.status === "On file" ? "blue" : "green")}</td>
+          <td class="muted nowrap">${H.fmtDate(d.date)}</td>
+        </tr>`).join("")}</tbody></table></div>`)}</div>`;
+  },
+
+  lcChanges() {
+    const changes = DB.lifecycle.changes;
+    const tones = { Promotion: "green", "Salary change": "violet", "Working time": "blue", Hire: "teal" };
+    const rows = changes.map((c) => `<tr>
+      <td class="muted nowrap">${H.fmtDate(c.date)}</td>
+      <td>${pill(c.type, tones[c.type] || "gray")}</td>
+      <td class="muted">${c.from}</td>
+      <td style="color:var(--brand)">${icon("chevronRight", 14)}</td>
+      <td><strong>${c.to}</strong></td>
+      <td class="muted">${c.by}</td>
+    </tr>`).join("");
+    return `
+      ${Pages.lcPanelHead("history", "Changes", "Every job, pay & contract change — fully versioned")}
+      ${card("Change history", changes.length + " changes on record", `<div class="table-wrap"><table class="tbl">
+        <thead><tr><th>Date</th><th>Type</th><th>From</th><th></th><th>To</th><th>By</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`)}`;
+  },
+
+  lcAbsence() {
+    const a = DB.lifecycle.absences;
+    const balances = a.balances.map((b) => balanceCard(b)).join("");
+    const tones = { "Annual Leave": "blue", "Sick Leave": "amber", "Personal Leave": "violet" };
+    const rows = a.history.map((h) => `<tr>
+      <td>${pill(h.type, tones[h.type] || "gray")}</td>
+      <td class="muted nowrap">${H.fmtDateShort(h.from)} – ${H.fmtDateShort(h.to)}</td>
+      <td><strong>${h.days} d</strong></td>
+      <td class="muted">${h.reason}</td>
+      <td>${leaveStatusPill(h.status)}</td>
+    </tr>`).join("");
+    return `
+      ${Pages.lcPanelHead("leave", "Absence", "Leave balances & full absence history")}
+      <div class="grid grid-3 section-gap">${balances}</div>
+      ${card("Absence history", a.history.length + " records", `<div class="table-wrap"><table class="tbl">
+        <thead><tr><th>Type</th><th>Dates</th><th>Days</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`)}`;
+  },
+
+  lcDevelopment() {
+    const L = DB.lifecycle;
+    const comps = L.competencies.map((c) => {
+      const pips = [1, 2, 3, 4].map((n) => `<span class="lc-pip ${n <= c.level ? "on" : ""}"></span>`).join("");
+      return `<div class="lc-comp">
+        <div class="lc-comp__top"><span class="lc-comp__name">${c.name}</span><span class="muted" style="font-size:11.5px">${c.cat} · L${c.level}/${c.target}</span></div>
+        <div class="lc-pips">${pips}</div>
+      </div>`;
+    }).join("");
+    const training = L.training.map((t) => {
+      const tone = t.status === "Completed" ? "green" : t.status === "In progress" ? "blue" : "gray";
+      return `<div class="list-row"><div class="dot-icon tint-brand">${icon("star", 16)}</div>
+        <div style="flex:1;min-width:0"><div class="lr-title">${t.name}</div><div class="lr-sub">${t.date} · ${t.hours} h</div></div>
+        ${pill(t.status, tone)}</div>`;
+    }).join("");
+    const goals = L.goals.map((g) => `<div class="list-row"><div class="dot-icon tint-green">${icon("check", 16)}</div>
+      <div style="flex:1;min-width:0"><div class="lr-title">${g.goal}</div><div class="lr-sub">Due ${g.due}</div></div>
+      ${pill(g.status, g.status === "On track" ? "green" : "blue")}</div>`).join("");
+    return `
+      ${Pages.lcPanelHead("trendUp", "Development", "Goals, competencies & training — growth over time")}
+      <div class="grid grid-2">
+        ${card("Competencies", "Level vs target (1–4)", `<div class="lc-comps">${comps}</div>`)}
+        ${card("Goals", L.goals.length + " active", goals)}
+      </div>
+      ${card("Training & certifications", L.training.filter((t) => t.status === "Completed").length + " completed", training)}`;
+  },
+
+  lcOffboarding() {
+    const steps = DB.lifecycle.offboarding.map((s, i) => `<div class="lc-tl-item">
+      <div class="lc-tl-dot lc-tl-dot--upcoming">${i + 1}</div>
+      <div class="lc-tl-body"><div class="lc-tl-title">${s.step}</div><div class="lc-tl-sub">Owner · ${s.owner}</div></div>
+    </div>`).join("");
+    return `
+      ${Pages.lcPanelHead("logout", "Offboarding", "Not started — Emma is active. Here's the exit process for when the time comes.")}
+      <div class="banner" style="margin-bottom:16px">${icon("info", 18)}<div>Offboarding hasn't been triggered. This is the standard <strong>exit workflow</strong> — a compliant, auditable checklist run when an employee leaves.</div></div>
+      ${card("Exit workflow", DB.lifecycle.offboarding.length + " steps · template", `<div class="lc-timeline">${steps}</div>`)}`;
+  },
+
+  lcAudit() {
+    const audit = DB.lifecycle.audit;
+    const tones = { Recruitment: "teal", Onboarding: "blue", Employment: "green", Change: "violet", Absence: "amber", Development: "blue" };
+    const rows = audit.map((a) => `<div class="lc-audit-row">
+      <div class="lc-audit-date">${H.fmtDate(a.date)}</div>
+      <div class="lc-audit-body">
+        <div class="lc-audit-event">${a.event}</div>
+        <div class="lc-audit-meta">${pill(a.cat, tones[a.cat] || "gray")}<span class="muted">by ${a.by}</span></div>
+      </div>
+    </div>`).join("");
+    return `
+      <div class="card" style="margin-top:18px">
+        <div class="card__head"><div><div class="card__title">Audit &amp; history log</div><div class="card__sub">${audit.length} events · every change tracked with who &amp; when</div></div>${icon("history", 18)}</div>
+        <div class="card__body"><div class="lc-audit">${rows}</div></div>
+      </div>`;
   },
 
   /* ---------------- LEAVE MANAGEMENT ---------------- */
